@@ -48,3 +48,11 @@ Inspected captures of the field, collection box, shop, and close hover target. C
 - [Shop](Benchmark/prototype-shop.png)
 
 Automated runtime tests call the same collection/economy methods used by gameplay. They are not a full manual mouse/keyboard usability playtest or an assessment of long-session balance. Broader hardware coverage, extended rapid-collection profiling, and player feedback remain useful next steps.
+
+## Resumed work: Scene view support
+
+Added an editor-only full-field preview, a framing button/menu command, and Scene-camera rendering of the live population during Play. The preview uses a hidden, unsaved scene and is disposed before Play, assembly reload and editor exit. Gameplay and saved progression are not started by the preview. The physical stage is still assembled on Play; editor guides mark the box, shop and spawn positions.
+
+The new runtime/editor code compiled. A focused Unity batch check used a GPU-backed URP render request with a Scene-type camera and rendered the 50,000-duck field (196,315 yellow pixels detected). It also passed compact-object-count, no-gameplay-startup, independent player-camera statistics, live removal and cleanup checks. The captured viewport was inspected: [Scene-camera render](Benchmark/scene-preview.png). The isolated copy logged unrelated package-editor resource import errors under its long temporary path; these did not prevent the render/checks. The window-capture tool did not reliably capture the actual docked Unity window, so that UI interaction is not claimed as verified.
+
+The standalone performance table above remains the previously measured baseline; the editor-preview addition does not run in a standalone player. The existing Windows build contains the completed gameplay loop. The latest Scene view support is in the Unity project sources.

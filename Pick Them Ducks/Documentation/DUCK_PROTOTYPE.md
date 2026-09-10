@@ -1,6 +1,10 @@
 # Pick Them Ducks — one-stage prototype
 
-Open `Assets/Sandouq/Scenes/DuckPrototype.unity` and press Play. The menu **Sandouq → Ducks → Open playable prototype** opens it too. The stage is assembled at runtime; an empty-looking editor scene with the Duck Prototype root is expected. The original SampleScene is preserved. The prototype is the only enabled build scene.
+Open `Assets/Sandouq/Scenes/DuckPrototype.unity` and press Play. The menu **Sandouq → Ducks → Open playable prototype** opens it too. The original SampleScene is preserved. The prototype is the only enabled build scene.
+
+The duck field now previews in Scene view before Play. Use **Sandouq → Ducks → Frame duck field**, or the button on the Duck Prototype root's inspector, to find it. **Show ducks in Scene view** toggles preview rendering. Before Play, the preview shows the configured full population and labels for the spawn, collection box and shop. The ground, physical box, shop and player are built on Play. During Play, Scene view displays the live population, including depleted ducks.
+
+The editor preview uses cached GPU instance batches in a hidden, unsaved preview scene. It does not create thousands of hierarchy objects or load/change your save. It rebuilds when population settings change and cleans up before Play, script reload or editor exit. Each Scene camera culls its own batches without changing the player-camera diagnostics.
 
 A tested Windows development build is also available locally at `Builds/DuckPrototype/PickThemDucks.exe`. Launch it normally to play. Keep the executable alongside its `_Data` directory and DLLs. The build directory is excluded by the project's existing Git ignore rules.
 

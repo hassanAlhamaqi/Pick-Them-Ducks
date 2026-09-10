@@ -1,0 +1,1 @@
+PASS: Scene-camera GPU rendering, compact preview, no gameplay startup, independent camera statistics, live removal and preview cleanup. Yellow pixels: 196315

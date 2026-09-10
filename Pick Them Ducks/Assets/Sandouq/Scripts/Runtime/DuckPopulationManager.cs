@@ -112,8 +112,8 @@ namespace Sandouq.Ducks
                 r.shadowCastingMode = ShadowCastingMode.Off;
             }
             parts = list.ToArray();
-            foreach (var c in duck.GetComponentsInChildren<Collider>()) Destroy(c);
-            foreach (var r in duck.GetComponentsInChildren<Rigidbody>()) Destroy(r);
+            foreach (var c in duck.GetComponentsInChildren<Collider>()) { if (Application.isPlaying) Destroy(c); else DestroyImmediate(c); }
+            foreach (var r in duck.GetComponentsInChildren<Rigidbody>()) { if (Application.isPlaying) Destroy(r); else DestroyImmediate(r); }
             if (settings.outlineShader != null) outline = new Material(settings.outlineShader);
             template.SetActive(false);
         }
@@ -163,21 +163,25 @@ namespace Sandouq.Ducks
             return best;
         }
 
-        void LateUpdate()
+        void LateUpdate() => RenderForCamera(view, true);
+
+        // The editor can render these same cached batches for a Scene view camera.
+        // Keep its culling and diagnostics separate from the player's camera.
+        public void RenderForCamera(Camera camera, bool updatePlayerStatistics = false)
         {
-            if (tiles == null || view == null) return;
-            GeometryUtility.CalculateFrustumPlanes(view, planes);
-            DrawCalls = 0; VisibleInstances = 0;
+            if (tiles == null || camera == null) return;
+            GeometryUtility.CalculateFrustumPlanes(camera, planes);
+            int calls = 0, visible = 0;
             foreach (var tile in tiles)
             {
                 if (tile.count == 0 || !GeometryUtility.TestPlanesAABB(planes, tile.bounds)) continue;
-                VisibleInstances += tile.count;
+                visible += tile.count;
                 for (int p = 0; p < parts.Length; p++)
                 {
                     var part = parts[p];
                     Graphics.DrawMeshInstanced(part.mesh, part.submesh, part.material, tile.matrices[p], tile.count,
-                        null, ShadowCastingMode.Off, false, 0, view, LightProbeUsage.Off);
-                    DrawCalls++;
+                        null, ShadowCastingMode.Off, false, 0, camera, LightProbeUsage.Off);
+                    calls++;
                 }
             }
             if (outline != null && IsAvailable(HoverId))
@@ -186,9 +190,10 @@ namespace Sandouq.Ducks
                 {
                     var part = parts[p];
                     Graphics.DrawMesh(part.mesh, tiles[tileOf[HoverId]].matrices[p][slotOf[HoverId]],
-                        outline, 0, view, part.submesh, null, ShadowCastingMode.Off, false, null, LightProbeUsage.Off);
+                        outline, 0, camera, part.submesh, null, ShadowCastingMode.Off, false, null, LightProbeUsage.Off);
                 }
             }
+            if (updatePlayerStatistics) { DrawCalls = calls; VisibleInstances = visible; }
         }
         void OnDestroy()
         {
