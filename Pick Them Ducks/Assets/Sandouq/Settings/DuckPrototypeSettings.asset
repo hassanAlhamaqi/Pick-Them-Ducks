@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfedbc971a928ef429ebbd3f3945d5be, type: 3}
+  m_Name: DuckPrototypeSettings
+  m_EditorClassIdentifier: 
+  duckPrefab: {fileID: 5829980650362595955, guid: 8b866b3f104b3d541a35ef1c068d3aad, type: 3}
+  outlineShader: {fileID: 4800000, guid: b7973b2675a8bbc49945840b4513e496, type: 3}
+  totalDucks: 50000
+  seed: 1731
+  duckSize: 0.48
+  spacing: 0.65
+  cellWidth: 16
+  moneyPerDuck: 1
+  tools:
+  - name: HANDS
+    cost: 0
+    capacity: 10
+    range: 2.8
+    interval: 0.24
+    batch: 1
+  - name: BASKET
+    cost: 20
+    capacity: 35
+    range: 3.1
+    interval: 0.32
+    batch: 4
+  - name: DUCK VACUUM
+    cost: 100
+    capacity: 65
+    range: 5.5
+    interval: 0.1
+    batch: 5
+  upgrades:
+  - name: Carry capacity  +15
+    baseCost: 15
+    costMultiplier: 1.65
+    amount: 15
+    maxLevel: 8
+  - name: Pickup speed  +20%
+    baseCost: 20
+    costMultiplier: 1.65
+    amount: 0.2
+    maxLevel: 8
+  - name: Vacuum range  +1m
+    baseCost: 40
+    costMultiplier: 1.65
+    amount: 1
+    maxLevel: 8
+  - name: Vacuum speed  +25%
+    baseCost: 45
+    costMultiplier: 1.65
+    amount: 0.25
+    maxLevel: 8
+  walkSpeed: 6
+  sprintSpeed: 10
+  mouseSensitivity: 0.1
+  animationPoolSize: 32
+  autosaveSeconds: 8
