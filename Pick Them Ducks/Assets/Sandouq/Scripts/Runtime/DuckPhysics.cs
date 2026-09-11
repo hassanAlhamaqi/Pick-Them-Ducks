@@ -41,6 +41,11 @@ namespace Sandouq.Ducks
             for(int i=0;i<count;i++) { int id=game.Population.Query(origin,forward,range,.15f,0,false); if(id<0)break; var d=game.Population.Position(id)-origin; d.y=0; if(!Launch(id,game.Population.Position(id),d.normalized*force+Vector3.up*.6f))break; pushed++; }
             return pushed;
         }
+        public void SweepActive(Transform frame,Bounds box,Vector3 velocity)
+        {
+            foreach(var body in pool)if(body.id>=0 && box.Contains(frame.InverseTransformPoint(body.go.transform.position)))
+            {body.rb.linearVelocity=new Vector3(velocity.x,body.rb.linearVelocity.y,velocity.z);body.rb.angularVelocity=new Vector3(velocity.z,0,-velocity.x)*3;}
+        }
         void FixedUpdate()
         {
             if(game==null)return;
@@ -51,6 +56,7 @@ namespace Sandouq.Ducks
                 if(b.id<0)continue;
                 b.age+=Time.fixedDeltaTime;
                 var p=b.go.transform.position-Vector3.up*.19f;
+                if(game.Deposits!=null && game.Deposits.TryIntake(b.id,game.Population.Position(b.id),p)){Disable(b);continue;}
                 game.Population.UpdatePose(b.id,p,b.go.transform.rotation);
                 b.still=b.rb.linearVelocity.sqrMagnitude<.025f && b.rb.angularVelocity.sqrMagnitude<.08f ? b.still+Time.fixedDeltaTime : 0;
                 if(b.still>.65f || b.rb.IsSleeping() || p.y < -10)

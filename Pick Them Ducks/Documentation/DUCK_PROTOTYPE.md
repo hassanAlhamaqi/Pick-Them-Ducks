@@ -1,58 +1,59 @@
-# Pick Them Ducks — editable park prototype
+# Pick Them Ducks — tools and deposit stations
 
-Open `Assets/Sandouq/Scenes/DuckPrototype.unity` and press Play. The terrain, landmarks, player, tools and scenery are saved scene objects. The settings asset controls population and economy; it does not construct the environment on Play.
+Open `Assets/Sandouq/Scenes/DuckPrototype.unity` and press Play. If Unity already has the previous scene open, reload it to see the updated serialized tool references. A tested Windows build is at `Builds/DuckPrototype/PickThemDucks.exe`.
+
+The terrain, lake, scenery, shop and depot remain authored scene objects. Tool and player instances reference reusable prefabs in `Assets/Sandouq/Park/Prefabs/`.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| WASD / mouse / Shift | Walk / look / run |
-| Hold LMB | Pick up, scoop, vacuum, or push with the fork |
-| Hold RMB | Throw inventory ducks forward, one every 0.18 seconds |
-| E at collection box | Deposit inventory plus the casket you are carrying |
-| E at shop | Buy tools, upgrades and a casket |
-| E near casket | Transfer inventory into its 1,000 spaces |
-| F near casket | Carry it; press F again to set it down |
-| 1 / 2 / 3 / 4 / 5 | Hands / basket / vacuum / fork / industrial vacuum |
-| Escape / F3 | Menu / render diagnostics |
+| WASD / mouse / Shift | Walk / look / sprint |
+| 1 | Hands: hold LMB on a duck until the progress bar finishes |
+| 2 | Duck Sweeper: hold LMB and move the brush into ducks to push them |
+| 3 | Duck Collector: hold LMB to drive forward and collect floor contacts |
+| 4 | Duck Vacuum: hold LMB to collect within the forward cone |
+| 5 | Duck Roller Car: hold LMB to drive and collect with the wide front roller |
+| Release LMB / hold S | Stop automatic movement / brake |
+| RMB | Throw an inventory duck |
+| E near any deposit station | Start transferring inventory; press E again to stop new launches |
+| F | Preview installation of a purchased Duck Casket kit |
+| LMB / R / RMB while placing | Install / rotate 45 degrees / cancel |
+| Escape / F3 | Menu / diagnostics |
 
-The casket costs $450. Fill it in the field, physically carry it back, and press E at the collection box. Ducks stored in a distant casket cannot be deposited remotely. Carrying it slows movement and occupies your hands. Its contents, location and carried state are saved, along with the player's return position.
+Moving away from a station stops new inventory launches. Ducks already in flight still arrive. Tools and throwing are temporarily locked while inventory transfers are in flight, so those IDs cannot be spent twice.
 
-## Progression
+## Tools and upgrades
 
-| Tool | Cost | Base inventory | Function |
+| Tool | Price | Base bag | Behavior |
 | --- | ---: | ---: | --- |
-| Hands | Free | 10 | Single pickup |
-| Basket | $25 | 45 | Scoop up to 4 ducks |
-| Vacuum | $220 | 120 | Up to 6 ducks per pulse, 5.5 m range |
-| Big fork | $80 | 120 | Push up to 12 nearby ducks into clusters |
-| Industrial vacuum | $1,500 | 250 | Up to 12 ducks per pulse, 9 m range |
+| Hands | Free | 10 | Timed hold; starts at 0.65 seconds per grab |
+| Duck Sweeper | $50 | 120 | Physical floor brush; does not collect into the bag |
+| Duck Collector | $120 | 45 | Smaller roller collector, automatic forward speed 8 m/s |
+| Duck Vacuum | $350 | 120 | Forward-cone pickup, 5.5 m range |
+| Duck Roller Car | $2,000 | 600 | Ride-on roller, wide intake, automatic speed 11 m/s |
+| Duck Casket | $450 each | No storage limit | Permanent installed deposit station; repeat purchases allowed |
 
-Capacity upgrades add 25 spaces, starting at $35. Pickup speed starts at $40; vacuum range and speed at $80 and $100. Upgrade prices multiply by 1.5 per level, with eight levels. Only depositing earns money. Buying or equipping a smaller tool never discards inventory.
+Global upgrades are exactly **Pickup Amount**, **Pickup Speed**, **Bag Capacity**, and **Walk / Sprint Speed**. Their starting prices are $30, $40, $35 and $60. Effects are +1 duck per pickup, +20% pickup rate (shorter hand hold), +25 bag spaces, and +10% walking/sprinting speed. They have eight levels and a 1.5 price multiplier.
 
-## Editing the park
+The selected sweeper, collector or car also has a dedicated tool upgrade in the shop. Each of six levels increases working width by 18% of base width; collector and car upgrades also increase automatic speed by 12% of base speed. Sweeper/collector upgrades start at $75, car upgrades at $250, with a 1.6 price multiplier. The collector has less bag capacity than the sweeper; the car has the largest bag. Switching to a tool that cannot hold the current load is blocked.
 
-- `Assets/Sandouq/Park/Prefabs/` contains the tool shop, collection box, portable casket, player, five tools, willow tree, boulder, bench and dock.
-- `Assets/Sandouq/Park/ParkTerrain.asset` is editable Unity TerrainData, 300 × 310 metres, with hills and a lake basin.
-- Terrain, water, a ground-following walking trail, lakeside trees, boulders, benches and a fishing dock are already placed in the scene.
-- `DuckGame` has explicit references to the scene's player, landmarks and park. Move prefab instances in the editor normally. The depot/shop interaction points follow those instances.
-- `DuckPark` specifies the terrain and lake exclusion area. Keep its lake centre/radii aligned if reshaping or moving the lake.
-- `Sandouq > Ducks > Create or refresh prototype scene` deliberately rebuilds the authored park. **Do not use this to launch the game:** it replaces scene layout and resets the starter environment assets/economy. Ordinary Play and player builds preserve scene edits.
+## Duck Caskets and deposit feel
 
-Ducks remain GPU instances rather than 50,000 hierarchy objects. `Sandouq > Ducks > Show ducks in Scene view` enables their editor preview; `Frame duck field` finds them. Before Play the full population is previewed; during Play the live remaining population is shown.
+Buy as many kits as you can afford. Install each on clear, reasonably level ground using the green/red preview. Water, other stations and solid scenery block installation. Cancelling or rejecting a placement retains the kit. Installed stations are permanent; they are not carried back to the hub.
 
-## Physics and performance
+Both the main depot and installed caskets accept ducks pushed or thrown through their intake. They also accept inventory via E. Each duck takes a visible arcing flight into the receiver. Every landing bounces the receiving object and increments money/deposited counts by one. The default launch spacing is 0.09 seconds and flight duration is 0.32 seconds. Several ducks can be in flight, but a bag is never credited as one bulk transaction.
 
-`DuckPopulationManager.Query` detects ducks in nearby world-space cells. `DuckGame.CollectId` performs the collection transaction. Cached matrices render sleeping ducks in batches of at most 256. A moved duck rejoins the spatial cell containing its new location; dense piles can use multiple batches in a cell.
+## Rendering, physics and saving
 
-`DuckPhysics` owns a prewarmed pool of 96 Rigidbody proxies using the supplied duck visual. Throws, player proximity and fork pushes activate proxies. When a body sleeps or remains below the motion thresholds for 0.65 seconds, its pose returns to the instanced population and the proxy becomes inactive/kinematic. Collecting a moving duck also releases its proxy. Saturation refuses extra throws without consuming inventory. Sleeping world ducks have no individual GameObjects or Update methods.
+Sleeping ducks stay in world-space GPU instance batches. Nearby queries, rectangular tool contact checks and deposit intake scans visit only nearby spatial cells. A pool of 96 Rigidbody proxies handles rolling; a separate pool of 16 reusable DOTween deposit flights ensures every queued duck can be shown without creating an object per duck. World intake queues wait for visual capacity instead of silently discarding transactions.
 
-The existing duck model and materials are retained. Hover outlines use a URP shader; DOTween animates pickups, deposits and fork strokes. The lake uses a lightweight animated ripple shader. Terrain/scenery collisions remain normal authored colliders.
+Save version 3 preserves individual duck IDs, multiple installed stations, unused kits and tool upgrades. Inventory remains owned until its animation lands; queued world ducks remain part of the world count until landing. Saving or quitting during a transfer therefore cannot lose or duplicate ducks. The existing save filename is retained.
 
-## Saving and validation
+Old basket, fork and industrial-vacuum ownership maps to Collector, Sweeper and Roller Car. Bag and pickup-speed upgrades survive. Old vacuum range/speed upgrades are refunded. An old portable casket becomes an installed Duck Casket; its stored ducks visibly drain into that station on load and pay once per landing.
 
-The existing `duck-stage-v1.json` path is retained for compatibility, with a version-2 payload. Old saves migrate their collected IDs, inventory, money, tools and upgrades. Saves include explicit inventory/casket IDs and moved world poses. Count conservation, duplicate IDs, invalid numbers and capacity violations are checked; atomic writes and backup recovery remain supported.
+## Validation and editing
 
-`DuckParkChecks.Run` validates authoring references, progression, save recovery, 1k/10k/50k/100k populations, casket capacity/overflow and relocated spatial batches. `DuckParkPlayChecks` is an opt-in standalone check (`--duck-park-check <output-directory>`), isolated from the player's save. `DuckBenchmark` remains available with `--duck-benchmark <output-directory>` for real GPU measurements.
+See `TOOLS_VALIDATION.md` for the current checks. Earlier park performance reports describe the earlier tool set.
 
-See `PARK_VALIDATION.md` for the current validation results. Earlier flat-field benchmark results describe the previous scene and should not be used as performance claims for this park.
+`DuckToolsBuilder.UpgradeScene` upgrades tools/settings in the existing saved scene without regenerating its terrain. `DuckPrototypeBuilder.Build` deliberately rebuilds the full starter park and then installs the current tools; use ordinary Play/build commands to preserve authored layout changes.

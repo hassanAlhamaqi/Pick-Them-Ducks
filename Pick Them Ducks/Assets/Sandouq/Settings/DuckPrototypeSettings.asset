@@ -21,57 +21,60 @@ MonoBehaviour:
   cellWidth: 16
   moneyPerDuck: 1
   tools:
-  - name: HANDS
+  - name: Hands
     cost: 0
     capacity: 10
     range: 2.8
-    interval: 0.24
+    interval: 0.65
     batch: 1
-  - name: BASKET
-    cost: 25
+  - name: Duck Collector
+    cost: 120
     capacity: 45
-    range: 3.2
-    interval: 0.28
-    batch: 4
-  - name: DUCK VACUUM
-    cost: 220
+    range: 1.4
+    interval: 0.16
+    batch: 3
+  - name: Duck Vacuum
+    cost: 350
     capacity: 120
     range: 5.5
-    interval: 0.085
-    batch: 6
-  - name: BIG FORK
-    cost: 80
+    interval: 0.12
+    batch: 4
+  - name: Duck Sweeper
+    cost: 50
     capacity: 120
-    range: 3.3
-    interval: 0.3
-    batch: 12
-  - name: INDUSTRIAL VAC
-    cost: 1500
-    capacity: 250
-    range: 9
-    interval: 0.055
-    batch: 12
+    range: 2.4
+    interval: 0.08
+    batch: 1
+  - name: Duck Roller Car
+    cost: 2000
+    capacity: 600
+    range: 3.5
+    interval: 0.12
+    batch: 10
   upgrades:
-  - name: Capacity +25
-    baseCost: 35
+  - name: Pickup Amount +1
+    baseCost: 30
     costMultiplier: 1.5
-    amount: 25
+    amount: 1
     maxLevel: 8
-  - name: Pickup speed +20%
+  - name: Pickup Speed +20%
     baseCost: 40
     costMultiplier: 1.5
     amount: 0.2
     maxLevel: 8
-  - name: Vacuum range +1m
-    baseCost: 80
+  - name: Bag Capacity +25
+    baseCost: 35
     costMultiplier: 1.5
-    amount: 1
+    amount: 25
     maxLevel: 8
-  - name: Vacuum speed +25%
-    baseCost: 100
+  - name: Walk / Sprint Speed +10%
+    baseCost: 60
     costMultiplier: 1.5
-    amount: 0.25
+    amount: 0.1
     maxLevel: 8
+  casketCost: 450
+  depositInterval: 0.09
+  depositFlightTime: 0.32
   walkSpeed: 6
   sprintSpeed: 10
   mouseSensitivity: 0.1

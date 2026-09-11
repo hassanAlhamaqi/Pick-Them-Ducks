@@ -24,7 +24,7 @@ namespace Sandouq.Ducks.Editor
         [MenuItem("Sandouq/Ducks/Create or refresh prototype scene")]
         public static void Build()
         {
-            DuckParkBuilder.Build();
+            DuckParkBuilder.Build(); DuckToolsBuilder.UpgradeScene();
         }
         [MenuItem("Sandouq/Ducks/Open playable prototype")]
         public static void Open()

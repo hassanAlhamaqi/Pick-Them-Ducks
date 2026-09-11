@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace Sandouq.Ducks
 {
-    public enum DuckTool { Hands, Basket, Vacuum, Fork, IndustrialVacuum }
-    public enum UpgradeKind { Capacity, PickupSpeed, VacuumRange, VacuumSpeed }
+    public enum DuckTool { Hands, Collector, Vacuum, Sweeper, RollerCar }
+    public enum UpgradeKind { PickupAmount, PickupSpeed, BagCapacity, MovementSpeed }
 
     [Serializable]
     public class ToolDefinition
@@ -43,21 +43,24 @@ namespace Sandouq.Ducks
         [Min(.5f)] public float spacing = 1.2f;
         [Min(2)] public int cellWidth = 16;
         [Min(1)] public int moneyPerDuck = 1;
-        [Header("Equipment — enum order: Hands, Basket, Vacuum, Fork, IndustrialVacuum")]
+        [Header("Equipment — enum order: Hands, Collector, Vacuum, Sweeper, RollerCar")]
         public ToolDefinition[] tools = {
-            new ToolDefinition("HANDS", 0, 10, 2.8f, .24f, 1),
-            new ToolDefinition("BASKET", 25, 45, 3.2f, .28f, 4),
-            new ToolDefinition("DUCK VACUUM", 220, 120, 5.5f, .085f, 6),
-            new ToolDefinition("BIG FORK", 80, 120, 3.3f, .3f, 12),
-            new ToolDefinition("INDUSTRIAL VAC", 1500, 250, 9, .055f, 12)
+            new ToolDefinition("Hands",0,10,2.8f,.65f,1),
+            new ToolDefinition("Duck Collector",120,45,1.4f,.16f,3),
+            new ToolDefinition("Duck Vacuum",350,120,5.5f,.12f,4),
+            new ToolDefinition("Duck Sweeper",50,120,2.4f,.08f,1),
+            new ToolDefinition("Duck Roller Car",2000,600,3.5f,.12f,10)
         };
-        [Header("Upgrades — enum order: Capacity, Pickup, Range, Vacuum speed")]
+        [Header("Upgrades: pickup amount, hold speed, bag capacity, movement")]
         public UpgradeDefinition[] upgrades = {
-            new UpgradeDefinition("Carry capacity  +25", 35, 25),
-            new UpgradeDefinition("Pickup speed  +20%", 40, .2f),
-            new UpgradeDefinition("Vacuum range  +1m", 80, 1),
-            new UpgradeDefinition("Vacuum speed  +25%", 100, .25f)
+            new UpgradeDefinition("Pickup Amount +1",30,1),
+            new UpgradeDefinition("Pickup Speed +20%",40,.2f),
+            new UpgradeDefinition("Bag Capacity +25",35,25),
+            new UpgradeDefinition("Walk / Sprint Speed +10%",60,.1f)
         };
+        public int casketCost=450;
+        public float depositInterval=.09f;
+        public float depositFlightTime=.32f;
         [Header("Movement / feedback")]
         public float walkSpeed = 6f;
         public float sprintSpeed = 10f;

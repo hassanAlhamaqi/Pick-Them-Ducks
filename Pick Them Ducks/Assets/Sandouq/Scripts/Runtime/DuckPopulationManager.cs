@@ -49,6 +49,8 @@ namespace Sandouq.Ducks
         public Quaternion Rotation(int id) => rotations[id];
         public bool IsAvailable(int id) => id >= 0 && id < Total && slotOf[id] >= 0;
         public bool IsPhysical(int id) => id >= 0 && id < Total && slotOf[id] == -2;
+        public bool IsReserved(int id)=>id>=0&&id<Total&&slotOf[id]==-3;
+        public bool Reserve(int id){if(IsAvailable(id)){Detach(id,false);}else if(!IsPhysical(id))return false;physical.Remove(id);slotOf[id]=-3;UpdatePose(id,positions[id],rotations[id]);return true;}
         public DuckPose[] Poses() => new List<DuckPose>(movedPoses.Values).ToArray();
         public int[] CollectedIds() => new List<int>(removed).ToArray();
 
@@ -128,7 +130,7 @@ namespace Sandouq.Ducks
 
         public bool Remove(int id)
         {
-            if(IsPhysical(id)) { physical.Remove(id); slotOf[id]=-1; Remaining--; removed.Add(id); movedPoses.Remove(id); return true; }
+            if(IsPhysical(id) || IsReserved(id)) { physical.Remove(id); slotOf[id]=-1; Remaining--; removed.Add(id); movedPoses.Remove(id); return true; }
             if (!IsAvailable(id)) return false;
             var tile = tiles[tileOf[id]]; int slot = slotOf[id], last = --tile.count;
             if (slot != last)
@@ -180,6 +182,19 @@ namespace Sandouq.Ducks
             return best;
         }
 
+        public int QueryBox(Transform frame,Bounds box,bool includePhysical=true)
+        {
+            Vector3 center=frame.TransformPoint(box.center);float radius=box.extents.magnitude;
+            int x0=Mathf.FloorToInt((center.x-radius)/cellSize),x1=Mathf.FloorToInt((center.x+radius)/cellSize);
+            int z0=Mathf.FloorToInt((center.z-radius)/cellSize),z1=Mathf.FloorToInt((center.z+radius)/cellSize);
+            for(int z=z0;z<=z1;z++)for(int x=x0;x<=x1;x++)if(cells.TryGetValue(new Vector2Int(x,z),out var batches))foreach(int index in batches)
+            {
+                var tile=tiles[index];for(int i=0;i<tile.count;i++){int id=tile.ids[i];if(box.Contains(frame.InverseTransformPoint(positions[id]+Vector3.up*.15f)))return id;}
+            }
+            if(includePhysical)foreach(int id in physical)if(box.Contains(frame.InverseTransformPoint(positions[id]+Vector3.up*.15f)))return id;
+            return -1;
+        }
+
         public bool Detach(int id, bool collected)
         {
             if(id<0 || id>=Total)return false;
@@ -191,7 +206,7 @@ namespace Sandouq.Ducks
         { positions[id]=p; rotations[id]=rotation; angles[id]=rotation.eulerAngles.y; movedPoses[id]=new DuckPose{id=id,position=p,rotation=rotation}; }
         public void Settle(int id, Vector3 p, Quaternion rotation)
         {
-            if(!IsPhysical(id))return;
+            if(!IsPhysical(id)&&!IsReserved(id))return;
             physical.Remove(id); UpdatePose(id,p,rotation);
             Insert(id,p,rotation);
         }

@@ -6,7 +6,8 @@ namespace Sandouq.Ducks
     public sealed class DuckPark : MonoBehaviour
     {
         public Terrain terrain;
-        public Transform casket;
+        public Transform casket; // Legacy scene template, hidden at runtime.
+        public GameObject casketPrefab;
         public Vector3 lakeCenter = new Vector3(-62, 0, 100);
         public Vector2 lakeRadius = new Vector2(38, 52);
         public float Ground(Vector3 p) => terrain == null ? 0 : terrain.SampleHeight(p) + terrain.transform.position.y;

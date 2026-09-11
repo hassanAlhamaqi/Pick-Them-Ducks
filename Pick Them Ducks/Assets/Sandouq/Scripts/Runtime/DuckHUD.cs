@@ -15,7 +15,7 @@ namespace Sandouq.Ducks
         Image carryFill, stageFill;
         GameObject shopContent;
         Button restartButton;
-        Text restartLabel, casketLabel; Button casketButton;
+        Text restartLabel, casketLabel, toolUpgradeLabel; Button casketButton, toolUpgradeButton; Image holdFill; RectTransform holdTrack;
         bool confirmRestart;
         readonly Text[] toolLabels = new Text[5], upgradeLabels = new Text[4];
         readonly Button[] toolButtons = new Button[5], upgradeButtons = new Button[4];
@@ -48,12 +48,14 @@ namespace Sandouq.Ducks
             var bar = Panel(bottom, new Vector2(22, -60), new Vector2(416, 6), new Color(.15f, .28f, .3f));
             carryFill = Panel(bar, Vector2.zero, new Vector2(416, 6), Gold).GetComponent<Image>();
             Panel(root, Vector2.zero, new Vector2(1600, 48), Ink, new Vector2(.5f, 0), new Vector2(.5f, 0));
-            Label(root, "WASD  move     SHIFT  run     LMB  collect     E  interact     1-5 tools   RMB throw   F casket     ESC  pause", 15, Color.white,
+            Label(root, "WASD  move     SHIFT  run     LMB hold/use     E  interact     1-5 tools   RMB throw   F install kit     ESC  pause", 15, Color.white,
                 new Vector2(0, 20), new Vector2(1200, 28), TextAnchor.MiddleCenter, new Vector2(.5f, 0), new Vector2(.5f, 0));
             promptBackdrop = Panel(root, new Vector2(0, -66), new Vector2(760, 45), Ink, new Vector2(.5f, .5f), new Vector2(.5f, 1));
             prompt = Label(root, "", 18, Color.white, new Vector2(0, -70), new Vector2(950, 38), TextAnchor.MiddleCenter, new Vector2(.5f, .5f), new Vector2(.5f, 1));
             noticeBackdrop = Panel(root, new Vector2(0, 122), new Vector2(620, 54), Ink, new Vector2(.5f, .5f), new Vector2(.5f, 1));
             notice = Label(root, "", 26, Gold, new Vector2(0, 120), new Vector2(1100, 50), TextAnchor.MiddleCenter, new Vector2(.5f, .5f), new Vector2(.5f, 1));
+            holdTrack=Panel(root,new Vector2(0,-36),new Vector2(150,7),Ink,new Vector2(.5f,.5f),new Vector2(.5f,.5f));
+            holdFill=Panel(holdTrack,Vector2.zero,new Vector2(0,7),Gold).GetComponent<Image>();
             Panel(root, Vector2.zero, new Vector2(26, 28), Ink, new Vector2(.5f, .5f), new Vector2(.5f, .5f));
             Label(root, "+", 28, Color.white, Vector2.zero, new Vector2(30, 35), TextAnchor.MiddleCenter, new Vector2(.5f, .5f), new Vector2(.5f, .5f));
             Panel(root, new Vector2(20, 65), new Vector2(265, 60), Ink, new Vector2(0, 0), new Vector2(0, 0));
@@ -67,13 +69,14 @@ namespace Sandouq.Ducks
             shopContent = new GameObject("Shop rows", typeof(RectTransform)); shopContent.transform.SetParent(menu, false); var rows = shopContent.GetComponent<RectTransform>(); rows.anchorMin = rows.anchorMax = new Vector2(0, 1); rows.pivot = new Vector2(0, 1); rows.anchoredPosition = new Vector2(35, -155);
             for (int i = 0; i < 5; i++)
             {
-                int index = i; toolButtons[i] = Button(rows, new Vector2(0, -i * 62), new Vector2(360, 55), () => { if (game.Progress.Data.owned[index]) game.Equip(index); else game.BuyTool(index); Refresh(); }, out toolLabels[i]);
+                int index = new[]{0,3,1,2,4}[i]; toolButtons[index] = Button(rows, new Vector2(0, -i * 62), new Vector2(360, 55), () => { if (game.Progress.Data.owned[index]) game.Equip(index); else game.BuyTool(index); Refresh(); }, out toolLabels[index]);
             }
             for (int i = 0; i < 4; i++)
             {
                 int index = i; upgradeButtons[i] = Button(rows, new Vector2(380, -i * 76), new Vector2(370, 65), () => { game.BuyUpgrade(index); Refresh(); }, out upgradeLabels[i]);
             }
             casketButton=Button(rows,new Vector2(0,-340),new Vector2(750,75),()=>{game.BuyCasket();Refresh();},out casketLabel);
+            toolUpgradeButton=Button(rows,new Vector2(0,-425),new Vector2(750,55),()=>{game.BuyToolUpgrade();Refresh();},out toolUpgradeLabel);
             Button(menu, new Vector2(35, -704), new Vector2(750, 48), () => game.SetMenu(false), out var close).GetComponent<Image>().color = Gold;
             close.text = "BACK TO THE DUCKS  /  ESC"; close.color = Ink;
             restartButton = Button(menu, new Vector2(35, -630), new Vector2(750, 48), () => {
@@ -83,7 +86,7 @@ namespace Sandouq.Ducks
             restartLabel.text = "START A FRESH FIELD";
             menu.gameObject.SetActive(false); Refresh();
         }
-        void Update() { if (Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + .1f; Refresh(); } }
+        void Update() { if(holdTrack!=null){holdTrack.gameObject.SetActive(game.HoldProgress>0&&!game.MenuOpen);holdFill.rectTransform.sizeDelta=new Vector2(150*game.HoldProgress,7);} if (Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + .1f; Refresh(); } }
         public void Refresh()
         {
             if (game.Progress == null || money == null) return;
@@ -101,7 +104,7 @@ namespace Sandouq.Ducks
                 stageFill.rectTransform.sizeDelta = new Vector2(310f * d.deposited / d.total, 5); lastDeposited = d.deposited;
             }
             if (lastRemaining != game.Population.Remaining) { remaining.text = game.Population.Remaining.ToString("N0") + " IN THE FIELD"; lastRemaining = game.Population.Remaining; }
-            if(d.casketOwned) remaining.text=game.Population.Remaining.ToString("N0")+" IN FIELD / CASKET "+d.casketDucks.Length+"/1000";
+            remaining.text=game.Population.Remaining.ToString("N0")+" IN FIELD / "+d.stations.Length+" CASKETS / "+d.casketKits+" KITS";
             prompt.text = game.Prompt; notice.text = game.Notice;
             promptBackdrop.gameObject.SetActive(!game.MenuOpen && !string.IsNullOrEmpty(game.Prompt));
             noticeBackdrop.gameObject.SetActive(!game.MenuOpen && !string.IsNullOrEmpty(game.Notice));
@@ -121,17 +124,19 @@ namespace Sandouq.Ducks
             menuSubtitle.text = complete ? "The field is clear. " + d.deposited.ToString("N0") + " ducks safely deposited.\nYour progress has been saved." : game.ShopOpen ? "$" + d.money.ToString("N0") + " available  •  Better tools make lighter work." : "Progress saves automatically.\nWalk to the yellow shop counter and press E to upgrade.";
             shopContent.SetActive(game.ShopOpen && !complete);
             restartButton.gameObject.SetActive(!game.ShopOpen || complete);
-            casketLabel.text=d.casketOwned ? "PORTABLE CASKET  /  "+d.casketDucks.Length+" / 1000 DUCKS\nE stash / F carry or drop / carry it to the box to deposit" : "PORTABLE CASKET  /  1,000 DUCKS  /  $450\nStore ducks in the field, then carry the casket back to deposit";
-            casketButton.interactable=!d.casketOwned && d.money>=450;
+            casketLabel.text="DUCK CASKET  /  $"+game.Settings.casketCost+" EACH  /  "+d.casketKits+" KITS\nInstall with F. Ducks pushed inside are deposited and earn money.";
+            casketButton.interactable=d.money>=game.Settings.casketCost;
+            toolUpgradeLabel.text=p.CanUpgradeTool?p.Equipment.name+"  LV "+p.ToolLevel+"/6  /  "+(p.ToolLevel>=6?"MAXED":"$"+p.ToolUpgradeCost+"  /  BIGGER"+(p.Tool==DuckTool.Sweeper?"":" + FASTER")):"EQUIP A SWEEPER, COLLECTOR OR ROLLER CAR TO UPGRADE IT";
+            toolUpgradeButton.interactable=p.CanUpgradeTool&&p.ToolLevel<6&&d.money>=p.ToolUpgradeCost;
             for (int i = 0; i < 5; i++)
             {
                 var def = game.Settings.tools[i];
-                toolLabels[i].text = def.name + "  /  " + def.capacity + " capacity\n" + (i == 1 ? "SCOOP 4" : i == 2 || i == 4 ? "VACUUM" : i==3 ? "PUSH DUCKS" : "PICKUP") + "    " + (d.owned[i] ? (d.currentTool == i ? "EQUIPPED" : "EQUIP") : "$" + def.cost);
-                toolButtons[i].interactable = d.owned[i] ? d.currentTool != i && d.carried <= def.capacity + d.levels[0] * game.Settings.upgrades[0].amount : d.money >= def.cost;
+                toolLabels[i].text = new[]{1,3,4,2,5}[i]+"  "+def.name + "  /  " + def.capacity + " capacity\n" + (i == 1 ? "AUTO-DRIVE COLLECTOR" : i==2 ? "VACUUM" : i==4 ? "RIDE-ON COLLECTOR" : i==3 ? "FLOOR SWEEPER" : "HOLD TO PICK UP") + "    " + (d.owned[i] ? (d.currentTool == i ? "EQUIPPED" : "EQUIP") : "$" + def.cost);
+                toolButtons[i].interactable = d.owned[i] ? d.currentTool != i && d.carried <= p.CapacityFor(i) : d.money >= def.cost;
             }
             for (int i = 0; i < 4; i++)
             {
-                var def = game.Settings.upgrades[i]; bool max = d.levels[i] >= def.maxLevel; bool locked = i >= 2 && !d.owned[2] && !d.owned[4];
+                var def = game.Settings.upgrades[i]; bool max = d.levels[i] >= def.maxLevel; bool locked = false;
                 upgradeLabels[i].text = def.name + "    LV " + d.levels[i] + "/" + def.maxLevel + "    " + (max ? "MAXED" : locked ? "BUY VACUUM FIRST" : "$" + def.Cost(d.levels[i]) + "  /  UPGRADE");
                 upgradeButtons[i].interactable = !max && !locked && d.money >= def.Cost(d.levels[i]);
             }
