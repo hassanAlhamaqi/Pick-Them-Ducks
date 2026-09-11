@@ -24,26 +24,7 @@ namespace Sandouq.Ducks.Editor
         [MenuItem("Sandouq/Ducks/Create or refresh prototype scene")]
         public static void Build()
         {
-            var settings = AssetDatabase.LoadAssetAtPath<PrototypeSettings>(SettingsPath);
-            if (settings == null) { settings = ScriptableObject.CreateInstance<PrototypeSettings>(); AssetDatabase.CreateAsset(settings, SettingsPath); }
-            settings.duckPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Sandouq/Prefabs/LowPoly Duck.prefab");
-            settings.outlineShader = Shader.Find("Sandouq/Duck Hover URP");
-            if (settings.duckPrefab == null) throw new InvalidOperationException("The supplied duck prefab is missing.");
-            var sourceMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Sandouq/Materials/Lowpoly Duck Material.mat");
-            sourceMaterial.enableInstancing = true; EditorUtility.SetDirty(sourceMaterial); EditorUtility.SetDirty(settings);
-            var previous = SceneManager.GetActiveScene();
-            bool batchBlank = Application.isBatchMode && string.IsNullOrEmpty(previous.path);
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, batchBlank ? NewSceneMode.Single : NewSceneMode.Additive);
-            SceneManager.SetActiveScene(scene);
-            var root = new GameObject("Duck Prototype — press Play"); root.AddComponent<DuckGame>().Settings = settings;
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            if (!batchBlank) { EditorSceneManager.CloseScene(scene, true); if (previous.IsValid()) SceneManager.SetActiveScene(previous); }
-            // Preserve existing scene entries, but this one-stage prototype is the build entry point.
-            var entries = new System.Collections.Generic.List<EditorBuildSettingsScene> { new EditorBuildSettingsScene(ScenePath, true) };
-            foreach (var entry in EditorBuildSettings.scenes) if (entry.path != ScenePath) entries.Add(new EditorBuildSettingsScene(entry.path, false));
-            EditorBuildSettings.scenes = entries.ToArray();
-            AssetDatabase.SaveAssets();
-            Debug.Log("Duck prototype ready: " + ScenePath);
+            DuckParkBuilder.Build();
         }
         [MenuItem("Sandouq/Ducks/Open playable prototype")]
         public static void Open()
@@ -66,7 +47,7 @@ namespace Sandouq.Ducks.Editor
         public static void BatchValidate() { Build(); Validate(); }
         public static void BuildValidationPlayer()
         {
-            Build();
+            if(!File.Exists(ScenePath))Build();
             UnityEditor.PlayerSettings.enableFrameTimingStats = true;
             Directory.CreateDirectory("Build/DuckPrototype");
             var result = BuildPipeline.BuildPlayer(new[] { ScenePath }, "Build/DuckPrototype/PickThemDucks.exe", BuildTarget.StandaloneWindows64, BuildOptions.Development);

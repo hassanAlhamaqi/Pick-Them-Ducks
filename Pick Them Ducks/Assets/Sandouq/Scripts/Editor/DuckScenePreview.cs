@@ -35,6 +35,8 @@ namespace Sandouq.Ducks.Editor
             EditorApplication.quitting += Clear;
             EditorApplication.playModeStateChanged += _ => Clear();
             EditorApplication.projectChanged += Clear;
+            Undo.undoRedoPerformed += Clear;
+            TerrainCallbacks.heightmapChanged += (terrain, region, synced) => Clear();
         }
 
         [MenuItem(MenuPath)]
@@ -96,8 +98,8 @@ namespace Sandouq.Ducks.Editor
             var previous = Handles.color;
             Handles.color = new Color(.2f, .8f, .75f, .7f);
             Handles.DrawWireCube(new Vector3(0, 0, preview.Length * .5f - 5), new Vector3(preview.Width + 8, .1f, preview.Length + 22));
-            Handles.Label(new Vector3(-4, 1.5f, -4), "COLLECTION BOX (built on Play)");
-            Handles.Label(new Vector3(4, 1.5f, -4), "TOOL SHOP (built on Play)");
+            Handles.Label(new Vector3(-4, 1.5f, -4), "COLLECTION BOX");
+            Handles.Label(new Vector3(4, 1.5f, -4), "TOOL SHOP");
             Handles.Label(new Vector3(0, 1.7f, -2), "PLAYER SPAWN");
             Handles.color = previous;
             Handles.BeginGUI();
@@ -136,7 +138,7 @@ namespace Sandouq.Ducks.Editor
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
-            EditorGUILayout.HelpBox("Ducks are instanced, so they do not appear individually in the hierarchy. Scene view previews the full field before Play and the live remaining population during Play. The stage, box and shop are built on Play.", MessageType.Info);
+            EditorGUILayout.HelpBox("Ducks are instanced, so they do not appear individually in the hierarchy. Scene view previews the full field before Play and the live remaining population during Play. Terrain, shop, depot, tools and player are saved scene objects and prefab instances.", MessageType.Info);
             if (GUILayout.Button("Frame duck field in Scene view")) DuckScenePreview.Frame();
         }
     }

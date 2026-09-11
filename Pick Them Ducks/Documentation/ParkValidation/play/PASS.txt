@@ -1,0 +1,1 @@
+PASS: authored references; pickup/throw conservation; empty throw; casket purchase, stash, physical transport, deposit; duplicate deposit; fork and industrial tool purchases; v2 save roundtrip; v1 migration; rigidbody retirement and relocated query; fork conservation; moving pickup; pool saturation and reuse. Render captures saved.

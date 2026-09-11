@@ -17,7 +17,7 @@ MonoBehaviour:
   totalDucks: 50000
   seed: 1731
   duckSize: 0.48
-  spacing: 0.65
+  spacing: 1.2
   cellWidth: 16
   moneyPerDuck: 1
   tools:
@@ -28,36 +28,48 @@ MonoBehaviour:
     interval: 0.24
     batch: 1
   - name: BASKET
-    cost: 20
-    capacity: 35
-    range: 3.1
-    interval: 0.32
+    cost: 25
+    capacity: 45
+    range: 3.2
+    interval: 0.28
     batch: 4
   - name: DUCK VACUUM
-    cost: 100
-    capacity: 65
+    cost: 220
+    capacity: 120
     range: 5.5
-    interval: 0.1
-    batch: 5
+    interval: 0.085
+    batch: 6
+  - name: BIG FORK
+    cost: 80
+    capacity: 120
+    range: 3.3
+    interval: 0.3
+    batch: 12
+  - name: INDUSTRIAL VAC
+    cost: 1500
+    capacity: 250
+    range: 9
+    interval: 0.055
+    batch: 12
   upgrades:
-  - name: Carry capacity  +15
-    baseCost: 15
-    costMultiplier: 1.65
-    amount: 15
+  - name: Capacity +25
+    baseCost: 35
+    costMultiplier: 1.5
+    amount: 25
     maxLevel: 8
-  - name: Pickup speed  +20%
-    baseCost: 20
-    costMultiplier: 1.65
+  - name: Pickup speed +20%
+    baseCost: 40
+    costMultiplier: 1.5
     amount: 0.2
     maxLevel: 8
-  - name: Vacuum range  +1m
-    baseCost: 40
-    costMultiplier: 1.65
+  - name: Vacuum range +1m
+    baseCost: 80
+    costMultiplier: 1.5
     amount: 1
     maxLevel: 8
-  - name: Vacuum speed  +25%
-    baseCost: 45
-    costMultiplier: 1.65
+  - name: Vacuum speed +25%
+    baseCost: 100
+    costMultiplier: 1.5
     amount: 0.25
     maxLevel: 8
   walkSpeed: 6

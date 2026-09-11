@@ -1,0 +1,1 @@
+PASS: serialized scene and prefab references; expanded terrain; existing economy/save/recovery checks; 1k/10k/50k/100k populations; 1000-duck casket capacity and overflow; relocated batch bounds; throw conservation.

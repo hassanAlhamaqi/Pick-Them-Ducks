@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Sandouq.Ducks
 {
-    public enum DuckTool { Hands, Basket, Vacuum }
+    public enum DuckTool { Hands, Basket, Vacuum, Fork, IndustrialVacuum }
     public enum UpgradeKind { Capacity, PickupSpeed, VacuumRange, VacuumSpeed }
 
     [Serializable]
@@ -24,7 +24,7 @@ namespace Sandouq.Ducks
     {
         public string name;
         public int baseCost;
-        public float costMultiplier = 1.65f;
+        public float costMultiplier = 1.5f;
         public float amount;
         public int maxLevel = 8;
         public UpgradeDefinition(string name, int cost, float amount) { this.name = name; baseCost = cost; this.amount = amount; }
@@ -40,21 +40,23 @@ namespace Sandouq.Ducks
         [Min(1)] public int totalDucks = 50000;
         public int seed = 1731;
         [Range(.25f, 1f)] public float duckSize = .48f;
-        [Min(.5f)] public float spacing = .65f;
+        [Min(.5f)] public float spacing = 1.2f;
         [Min(2)] public int cellWidth = 16;
         [Min(1)] public int moneyPerDuck = 1;
-        [Header("Equipment — enum order: Hands, Basket, Vacuum")]
+        [Header("Equipment — enum order: Hands, Basket, Vacuum, Fork, IndustrialVacuum")]
         public ToolDefinition[] tools = {
             new ToolDefinition("HANDS", 0, 10, 2.8f, .24f, 1),
-            new ToolDefinition("BASKET", 20, 35, 3.1f, .32f, 4),
-            new ToolDefinition("DUCK VACUUM", 100, 65, 5.5f, .10f, 5)
+            new ToolDefinition("BASKET", 25, 45, 3.2f, .28f, 4),
+            new ToolDefinition("DUCK VACUUM", 220, 120, 5.5f, .085f, 6),
+            new ToolDefinition("BIG FORK", 80, 120, 3.3f, .3f, 12),
+            new ToolDefinition("INDUSTRIAL VAC", 1500, 250, 9, .055f, 12)
         };
         [Header("Upgrades — enum order: Capacity, Pickup, Range, Vacuum speed")]
         public UpgradeDefinition[] upgrades = {
-            new UpgradeDefinition("Carry capacity  +15", 15, 15),
-            new UpgradeDefinition("Pickup speed  +20%", 20, .2f),
-            new UpgradeDefinition("Vacuum range  +1m", 40, 1),
-            new UpgradeDefinition("Vacuum speed  +25%", 45, .25f)
+            new UpgradeDefinition("Carry capacity  +25", 35, 25),
+            new UpgradeDefinition("Pickup speed  +20%", 40, .2f),
+            new UpgradeDefinition("Vacuum range  +1m", 80, 1),
+            new UpgradeDefinition("Vacuum speed  +25%", 100, .25f)
         };
         [Header("Movement / feedback")]
         public float walkSpeed = 6f;

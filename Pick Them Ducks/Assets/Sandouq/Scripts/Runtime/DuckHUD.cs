@@ -15,10 +15,10 @@ namespace Sandouq.Ducks
         Image carryFill, stageFill;
         GameObject shopContent;
         Button restartButton;
-        Text restartLabel;
+        Text restartLabel, casketLabel; Button casketButton;
         bool confirmRestart;
-        readonly Text[] toolLabels = new Text[3], upgradeLabels = new Text[4];
-        readonly Button[] toolButtons = new Button[3], upgradeButtons = new Button[4];
+        readonly Text[] toolLabels = new Text[5], upgradeLabels = new Text[4];
+        readonly Button[] toolButtons = new Button[5], upgradeButtons = new Button[4];
         float nextRefresh;
         int lastMoney = -1, lastCarried = -1, lastCapacity = -1, lastDeposited = -1, lastTool = -1, lastRemaining = -1;
         int lastBoxDistance = -1, lastShopDistance = -1;
@@ -48,7 +48,7 @@ namespace Sandouq.Ducks
             var bar = Panel(bottom, new Vector2(22, -60), new Vector2(416, 6), new Color(.15f, .28f, .3f));
             carryFill = Panel(bar, Vector2.zero, new Vector2(416, 6), Gold).GetComponent<Image>();
             Panel(root, Vector2.zero, new Vector2(1600, 48), Ink, new Vector2(.5f, 0), new Vector2(.5f, 0));
-            Label(root, "WASD  move     SHIFT  run     LMB  collect     E  interact     1 / 2 / 3  tools     ESC  pause", 15, Color.white,
+            Label(root, "WASD  move     SHIFT  run     LMB  collect     E  interact     1-5 tools   RMB throw   F casket     ESC  pause", 15, Color.white,
                 new Vector2(0, 20), new Vector2(1200, 28), TextAnchor.MiddleCenter, new Vector2(.5f, 0), new Vector2(.5f, 0));
             promptBackdrop = Panel(root, new Vector2(0, -66), new Vector2(760, 45), Ink, new Vector2(.5f, .5f), new Vector2(.5f, 1));
             prompt = Label(root, "", 18, Color.white, new Vector2(0, -70), new Vector2(950, 38), TextAnchor.MiddleCenter, new Vector2(.5f, .5f), new Vector2(.5f, 1));
@@ -65,14 +65,15 @@ namespace Sandouq.Ducks
             menuTitle = Label(menu, "THE TOOL SHED", 36, Gold, new Vector2(35, -25), new Vector2(750, 50));
             menuSubtitle = Label(menu, "", 18, Muted, new Vector2(35, -86), new Vector2(745, 58));
             shopContent = new GameObject("Shop rows", typeof(RectTransform)); shopContent.transform.SetParent(menu, false); var rows = shopContent.GetComponent<RectTransform>(); rows.anchorMin = rows.anchorMax = new Vector2(0, 1); rows.pivot = new Vector2(0, 1); rows.anchoredPosition = new Vector2(35, -155);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
-                int index = i; toolButtons[i] = Button(rows, new Vector2(0, -i * 65), new Vector2(750, 55), () => { if (game.Progress.Data.owned[index]) game.Equip(index); else game.BuyTool(index); Refresh(); }, out toolLabels[i]);
+                int index = i; toolButtons[i] = Button(rows, new Vector2(0, -i * 62), new Vector2(360, 55), () => { if (game.Progress.Data.owned[index]) game.Equip(index); else game.BuyTool(index); Refresh(); }, out toolLabels[i]);
             }
             for (int i = 0; i < 4; i++)
             {
-                int index = i; upgradeButtons[i] = Button(rows, new Vector2(0, -215 - i * 64), new Vector2(750, 54), () => { game.BuyUpgrade(index); Refresh(); }, out upgradeLabels[i]);
+                int index = i; upgradeButtons[i] = Button(rows, new Vector2(380, -i * 76), new Vector2(370, 65), () => { game.BuyUpgrade(index); Refresh(); }, out upgradeLabels[i]);
             }
+            casketButton=Button(rows,new Vector2(0,-340),new Vector2(750,75),()=>{game.BuyCasket();Refresh();},out casketLabel);
             Button(menu, new Vector2(35, -704), new Vector2(750, 48), () => game.SetMenu(false), out var close).GetComponent<Image>().color = Gold;
             close.text = "BACK TO THE DUCKS  /  ESC"; close.color = Ink;
             restartButton = Button(menu, new Vector2(35, -630), new Vector2(750, 48), () => {
@@ -100,6 +101,7 @@ namespace Sandouq.Ducks
                 stageFill.rectTransform.sizeDelta = new Vector2(310f * d.deposited / d.total, 5); lastDeposited = d.deposited;
             }
             if (lastRemaining != game.Population.Remaining) { remaining.text = game.Population.Remaining.ToString("N0") + " IN THE FIELD"; lastRemaining = game.Population.Remaining; }
+            if(d.casketOwned) remaining.text=game.Population.Remaining.ToString("N0")+" IN FIELD / CASKET "+d.casketDucks.Length+"/1000";
             prompt.text = game.Prompt; notice.text = game.Notice;
             promptBackdrop.gameObject.SetActive(!game.MenuOpen && !string.IsNullOrEmpty(game.Prompt));
             noticeBackdrop.gameObject.SetActive(!game.MenuOpen && !string.IsNullOrEmpty(game.Notice));
@@ -111,7 +113,7 @@ namespace Sandouq.Ducks
                 lastBoxDistance = boxDistance; lastShopDistance = shopDistance;
             }
             diagnostics.gameObject.SetActive(game.Diagnostics);
-            if (game.Diagnostics) diagnostics.text = "F3  /  RENDER DIAGNOSTICS\n" + (1000 / Mathf.Max(1, game.SmoothedFrameMs)).ToString("F0") + " FPS  •  " + game.SmoothedFrameMs.ToString("F1") + " ms\n" + game.Population.VisibleInstances.ToString("N0") + " visible instances / " + game.Population.DrawCalls + " batches\nNo world-duck GameObjects, colliders or rigidbodies";
+            if (game.Diagnostics) diagnostics.text = "F3  /  RENDER DIAGNOSTICS\n" + (1000 / Mathf.Max(1, game.SmoothedFrameMs)).ToString("F0") + " FPS  •  " + game.SmoothedFrameMs.ToString("F1") + " ms\n" + game.Population.VisibleInstances.ToString("N0") + " visible instances / " + game.Population.DrawCalls + " batches\nSleeping ducks instanced / bounded rolling physics pool";
             menu.gameObject.SetActive(game.MenuOpen);
             if (!game.MenuOpen) { confirmRestart = false; restartLabel.text = "START A FRESH FIELD"; return; }
             bool complete = p.Complete;
@@ -119,15 +121,17 @@ namespace Sandouq.Ducks
             menuSubtitle.text = complete ? "The field is clear. " + d.deposited.ToString("N0") + " ducks safely deposited.\nYour progress has been saved." : game.ShopOpen ? "$" + d.money.ToString("N0") + " available  •  Better tools make lighter work." : "Progress saves automatically.\nWalk to the yellow shop counter and press E to upgrade.";
             shopContent.SetActive(game.ShopOpen && !complete);
             restartButton.gameObject.SetActive(!game.ShopOpen || complete);
-            for (int i = 0; i < 3; i++)
+            casketLabel.text=d.casketOwned ? "PORTABLE CASKET  /  "+d.casketDucks.Length+" / 1000 DUCKS\nE stash / F carry or drop / carry it to the box to deposit" : "PORTABLE CASKET  /  1,000 DUCKS  /  $450\nStore ducks in the field, then carry the casket back to deposit";
+            casketButton.interactable=!d.casketOwned && d.money>=450;
+            for (int i = 0; i < 5; i++)
             {
                 var def = game.Settings.tools[i];
-                toolLabels[i].text = def.name + "   /   " + def.capacity + " base capacity    " + (i == 1 ? "SCOOP 4" : i == 2 ? "HOLD TO VACUUM" : "SINGLE PICKUP") + "    " + (d.owned[i] ? (d.currentTool == i ? "EQUIPPED" : "EQUIP") : "$" + def.cost);
+                toolLabels[i].text = def.name + "  /  " + def.capacity + " capacity\n" + (i == 1 ? "SCOOP 4" : i == 2 || i == 4 ? "VACUUM" : i==3 ? "PUSH DUCKS" : "PICKUP") + "    " + (d.owned[i] ? (d.currentTool == i ? "EQUIPPED" : "EQUIP") : "$" + def.cost);
                 toolButtons[i].interactable = d.owned[i] ? d.currentTool != i && d.carried <= def.capacity + d.levels[0] * game.Settings.upgrades[0].amount : d.money >= def.cost;
             }
             for (int i = 0; i < 4; i++)
             {
-                var def = game.Settings.upgrades[i]; bool max = d.levels[i] >= def.maxLevel; bool locked = i >= 2 && !d.owned[2];
+                var def = game.Settings.upgrades[i]; bool max = d.levels[i] >= def.maxLevel; bool locked = i >= 2 && !d.owned[2] && !d.owned[4];
                 upgradeLabels[i].text = def.name + "    LV " + d.levels[i] + "/" + def.maxLevel + "    " + (max ? "MAXED" : locked ? "BUY VACUUM FIRST" : "$" + def.Cost(d.levels[i]) + "  /  UPGRADE");
                 upgradeButtons[i].interactable = !max && !locked && d.money >= def.Cost(d.levels[i]);
             }

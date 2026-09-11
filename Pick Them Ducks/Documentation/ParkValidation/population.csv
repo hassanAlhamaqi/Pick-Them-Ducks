@@ -1,0 +1,6 @@
+Population structural checks (Editor, not GPU frame benchmarks)
+count,init_ms,query_1000_ms,managed_delta_bytes,parts,vertices_per_duck
+1000,11.88,20.19,204800,1,276
+10000,9.64,24.54,3244032,1,276
+50000,66.60,28.53,8970240,1,276
+100000,106.17,54.86,17768448,1,276

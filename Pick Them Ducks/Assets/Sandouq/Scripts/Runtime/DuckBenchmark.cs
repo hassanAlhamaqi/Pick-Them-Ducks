@@ -106,14 +106,16 @@ namespace Sandouq.Ducks
         static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
         static void GameplayCheck(DuckGame game)
         {
+            game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*2);
             var p = game.Progress; int first = game.Population.Remaining;
             for (int i = 0; i < 10; i++) Assert(game.CollectId(i), "Runtime pickup");
             Assert(!game.CollectId(10) && p.Data.money == 0, "Runtime capacity / money");
             Assert(game.Deposit() == 10 && p.Data.money == 10 * game.Settings.moneyPerDuck, "Runtime deposit");
             Assert(game.Deposit() == 0 && !game.CollectId(0), "Runtime double collection/deposit");
-            for (int i = 10; i < 20; i++) Assert(game.CollectId(i), "Second trip"); game.Deposit(); game.BuyTool(1);
-            Assert(p.Tool == DuckTool.Basket && p.Capacity == 35, "Basket progression");
-            Assert(game.Population.Remaining == first - 20 && p.Data.deposited == 20 && p.Data.carried == 0, "Duck conservation");
+            for (int i = 10; i < 20; i++) Assert(game.CollectId(i), "Second trip"); game.Deposit();
+            for(int i=20;i<30;i++)Assert(game.CollectId(i),"Third trip");game.Deposit(); game.BuyTool(1);
+            Assert(p.Tool == DuckTool.Basket && p.Capacity == game.Settings.tools[1].capacity, "Basket progression");
+            Assert(game.Population.Remaining == first - 30 && p.Data.deposited == 30 && p.Data.carried == 0, "Duck conservation");
             var camera = game.Player.View.transform;
             camera.position = game.Population.Position(100) + Vector3.up * 2; camera.rotation = Quaternion.Euler(90, 0, 0);
             Assert(game.CollectAimed() == game.Settings.tools[1].batch, "Aimed basket scoop");

@@ -1,68 +1,58 @@
-# Pick Them Ducks — one-stage prototype
+# Pick Them Ducks � editable park prototype
 
-Open `Assets/Sandouq/Scenes/DuckPrototype.unity` and press Play. The menu **Sandouq → Ducks → Open playable prototype** opens it too. The original SampleScene is preserved. The prototype is the only enabled build scene.
+Open `Assets/Sandouq/Scenes/DuckPrototype.unity` and press Play. The terrain, landmarks, player, tools and scenery are saved scene objects. The settings asset controls population and economy; it does not construct the environment on Play.
 
-The duck field now previews in Scene view before Play. Use **Sandouq → Ducks → Frame duck field**, or the button on the Duck Prototype root's inspector, to find it. **Show ducks in Scene view** toggles preview rendering. Before Play, the preview shows the configured full population and labels for the spawn, collection box and shop. The ground, physical box, shop and player are built on Play. During Play, Scene view displays the live population, including depleted ducks.
-
-The editor preview uses cached GPU instance batches in a hidden, unsaved preview scene. It does not create thousands of hierarchy objects or load/change your save. It rebuilds when population settings change and cleans up before Play, script reload or editor exit. Each Scene camera culls its own batches without changing the player-camera diagnostics.
-
-A tested Windows development build is also available locally at `Builds/DuckPrototype/PickThemDucks.exe`. Launch it normally to play. Keep the executable alongside its `_Data` directory and DLLs. The build directory is excluded by the project's existing Git ignore rules.
-
-## Play
+## Controls
 
 | Input | Action |
 | --- | --- |
-| WASD / mouse | Walk / look |
-| Shift | Run |
-| Hold left mouse | Pick, scoop, or vacuum |
-| E near collection box | Deposit carried ducks and earn money |
-| E near shop | Open shop |
-| 1 / 2 / 3 | Equip purchased hands / basket / vacuum |
-| Escape | Pause/menu, release cursor, resume |
-| F3 | Lightweight frame and rendering diagnostics |
+| WASD / mouse / Shift | Walk / look / run |
+| Hold LMB | Pick up, scoop, vacuum, or push with the fork |
+| Hold RMB | Throw inventory ducks forward, one every 0.18 seconds |
+| E at collection box | Deposit inventory plus the casket you are carrying |
+| E at shop | Buy tools, upgrades and a casket |
+| E near casket | Transfer inventory into its 1,000 spaces |
+| F near casket | Carry it; press F again to set it down |
+| 1 / 2 / 3 / 4 / 5 | Hands / basket / vacuum / fork / industrial vacuum |
+| Escape / F3 | Menu / render diagnostics |
 
-Look down slightly at nearby ducks. The white outline identifies the target. Start with ten spaces. Two full trips pay for the $20 basket, which scoops up to four nearby ducks per action and carries 35. The $100 vacuum holds 65 and continuously collects up to five ducks per pulse from its forward cone. Upgrades improve capacity, pickup rate, vacuum range and vacuum rate. Deposits alone award money. Switching to equipment too small for the current load is blocked until depositing.
+The casket costs $450. Fill it in the field, physically carry it back, and press E at the collection box. Ducks stored in a distant casket cannot be deposited remotely. Carrying it slows movement and occupies your hands. Its contents, location and carried state are saved, along with the player's return position.
 
-The collection box and shop are on the starting apron. The central ivory lane leads back to them. There is one finite field, no respawning, and no other stages or duck variants. Completion requires every duck to reach the box.
+## Progression
 
-## Tuning
+| Tool | Cost | Base inventory | Function |
+| --- | ---: | ---: | --- |
+| Hands | Free | 10 | Single pickup |
+| Basket | $25 | 45 | Scoop up to 4 ducks |
+| Vacuum | $220 | 120 | Up to 6 ducks per pulse, 5.5 m range |
+| Big fork | $80 | 120 | Push up to 12 nearby ducks into clusters |
+| Industrial vacuum | $1,500 | 250 | Up to 12 ducks per pulse, 9 m range |
 
-Select `Assets/Sandouq/Settings/DuckPrototypeSettings.asset`:
+Capacity upgrades add 25 spaces, starting at $35. Pickup speed starts at $40; vacuum range and speed at $80 and $100. Upgrade prices multiply by 1.5 per level, with eight levels. Only depositing earns money. Buying or equipping a smaller tool never discards inventory.
 
-- Population defaults to 50,000, with deterministic layout and configurable seed, spacing, size and tile width.
-- Money per deposited duck, equipment costs, capacities, rates, batch sizes and ranges are editable.
-- Upgrade costs, cost multipliers, effects and maximum levels are editable.
-- Movement speed, mouse sensitivity, effect pool size and autosave interval are editable.
-- Tool and upgrade arrays follow the enum order shown in the inspector. Additional tools require an enum entry and collection behavior; numeric tuning is data-driven.
+## Editing the park
 
-Existing saves retain their original population total and seed. To test a changed total, choose **Start a fresh field** from the pause menu and confirm with a second click. This resets progression and uses the current settings. Prices/equipment tuning otherwise apply immediately to a new Play session.
+- `Assets/Sandouq/Park/Prefabs/` contains the tool shop, collection box, portable casket, player, five tools, willow tree, boulder, bench and dock.
+- `Assets/Sandouq/Park/ParkTerrain.asset` is editable Unity TerrainData, 300 � 310 metres, with hills and a lake basin.
+- Terrain, water, a ground-following walking trail, lakeside trees, boulders, benches and a fishing dock are already placed in the scene.
+- `DuckGame` has explicit references to the scene's player, landmarks and park. Move prefab instances in the editor normally. The depot/shop interaction points follow those instances.
+- `DuckPark` specifies the terrain and lake exclusion area. Keep its lake centre/radii aligned if reshaping or moving the lake.
+- `Sandouq > Ducks > Create or refresh prototype scene` deliberately rebuilds the authored park. **Do not use this to launch the game:** it replaces scene layout and resets the starter environment assets/economy. Ordinary Play and player builds preserve scene edits.
 
-## Existing assets and project integration
+Ducks remain GPU instances rather than 50,000 hierarchy objects. `Sandouq > Ducks > Show ducks in Scene view` enables their editor preview; `Frame duck field` finds them. Before Play the full population is previewed; during Play the live remaining population is shown.
 
-- Unity 6000.0.60f1, Universal RP 17.0.4, Input System 1.14.2, uGUI 2.0.0; both input backends were enabled in the existing project.
-- The single supplied `Sandouq/Prefabs/LowPoly Duck.prefab` supplies all duck meshes, transforms, textures and materials. No replacement duck model/material/variant is created. Its material has GPU instancing enabled. Runtime copies retain its appearance.
-- DOTween drives preallocated pickup-flight tweens and a box response on deposit. Generated short audio clips provide squeak/chime feedback with no external assets.
-- The switches-game's mouse-look and DOTween interaction patterns informed the implementation. Its scripts depend on unrelated facility gameplay, so they were not copied wholesale.
-- QuickOutline is installed, but its bundled built-in-pipeline shader is not used for the population. A small URP outline shader draws only the hovered duck; no Outline component is attached to every duck.
+## Physics and performance
 
-## Performance architecture
+`DuckPopulationManager.Query` detects ducks in nearby world-space cells. `DuckGame.CollectId` performs the collection transaction. Cached matrices render sleeping ducks in batches of at most 256. A moved duck rejoins the spatial cell containing its new location; dense piles can use multiple batches in a cell.
 
-`DuckPopulationManager` separates rendering and interactions. It stores positions, yaw, tile IDs and packed slots in arrays. Tile batches contain at most 961 ducks (default 256), below DrawMeshInstanced's 1023 limit. Matrices are generated once. CPU frustum culling submits only visible tiles; removing a duck swaps the last live entry into its slot, with no complete-buffer rebuild. Tile bounds remain conservative after removals.
+`DuckPhysics` owns a prewarmed pool of 96 Rigidbody proxies using the supplied duck visual. Throws, player proximity and fork pushes activate proxies. When a body sleeps or remains below the motion thresholds for 0.65 seconds, its pose returns to the instanced population and the proxy becomes inactive/kinematic. Collecting a moving duck also releases its proxy. Saturation refuses extra throws without consuming inventory. Sleeping world ducks have no individual GameObjects or Update methods.
 
-Pickup queries visit only spatial tiles within tool range. World ducks have **zero GameObjects, colliders, rigidbodies or per-duck Update methods**. A single disabled prefab template plus a fixed pool (32 by default) represent animated ducks. Pool saturation drops surplus animation only, never inventory transactions. Depositing displays at most 12 representative ducks and does not accumulate objects in the box.
+The existing duck model and materials are retained. Hover outlines use a URP shader; DOTween animates pickups, deposits and fork strokes. The lake uses a lightweight animated ripple shader. Terrain/scenery collisions remain normal authored colliders.
 
-No per-frame allocations are intentional in population rendering or spatial queries. Cached DOTween flights are restarted rather than created for every pickup. The HUD refreshes text at 10 Hz; UI strings and notices allocate, and JSON snapshots allocate at save boundaries. The system does not claim zero allocations across the entire application. Population memory and draw submission still grow linearly; GPU vertex cost scales with visible source-mesh complexity. Hundreds of thousands may eventually benefit from indirect rendering or an impostor/LOD path, guided by profiling rather than GameObject expansion.
+## Saving and validation
 
-## Saves
+The existing `duck-stage-v1.json` path is retained for compatibility, with a version-2 payload. Old saves migrate their collected IDs, inventory, money, tools and upgrades. Saves include explicit inventory/casket IDs and moved world poses. Count conservation, duplicate IDs, invalid numbers and capacity violations are checked; atomic writes and backup recovery remain supported.
 
-`duck-stage-v1.json` under Unity's `Application.persistentDataPath` stores version, money, carried count, deposited count, owned/current tools, four upgrade levels, original total/seed and depleted duck IDs. Positions reconstruct deterministically. The invariant is **remaining + carried + deposited = stage total**.
+`DuckParkChecks.Run` validates authoring references, progression, save recovery, 1k/10k/50k/100k populations, casket capacity/overflow and relocated spatial batches. `DuckParkPlayChecks` is an opt-in standalone check (`--duck-park-check <output-directory>`), isolated from the player's save. `DuckBenchmark` remains available with `--duck-benchmark <output-directory>` for real GPU measurements.
 
-Pickup changes autosave every eight seconds; deposits, purchases and equipment changes save immediately. Application pause, focus loss, disable and quit also save. A temporary file is atomically replaced and the preceding valid file is kept as `.bak`. Loading validates quantities, indices and upgrade levels; corrupt primary saves fall back to the backup. A forced process termination between autosaves can lose the most recent unsaved pickups. No network service is used.
-
-## Validation tools
-
-**Sandouq → Ducks → Run logic and population checks** exercises inventory limits, duplicate prevention, deposit economy, purchases, tool switching, upgrade limits, completion, save/recovery and spatial query/removal/reload at 1k/10k/50k/100k. Results go to `Temp/DuckValidation` and do not touch player saves.
-
-For an actual Windows development player, invoke the editor method `Sandouq.Ducks.Editor.DuckPrototypeBuilder.BuildValidationPlayer`. Run the resulting executable in a **visible window** with `--duck-benchmark <absolute output folder>` to measure all four populations from ground and overview viewpoints. It runs isolated gameplay checks, writes CSV frame/CPU/GPU/allocation/memory/object statistics, and captures 50k screenshots. A black capture fails validation; a hidden window can skip graphics work and produce invalid frame rates. GPU timings are explicitly reported as unavailable when the graphics driver does not expose them. Ordinary play never installs this runner.
-
-See `VALIDATION.md` for measured results and limitations from this implementation session.
+See `PARK_VALIDATION.md` for the current validation results. Earlier flat-field benchmark results describe the previous scene and should not be used as performance claims for this park.

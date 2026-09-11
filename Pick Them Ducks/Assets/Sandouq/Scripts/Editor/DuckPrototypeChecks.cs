@@ -27,6 +27,7 @@ namespace Sandouq.Ducks.Editor
             d.money = int.MaxValue / 4; for (int i = 0; i < settings.upgrades[0].maxLevel; i++) Check(p.BuyUpgrade(0), "Capacity upgrade");
             Check(!p.BuyUpgrade(0), "Max-level limit");
             d.collected = new int[d.carried + d.deposited]; for (int i = 0; i < d.collected.Length; i++) d.collected[i] = i;
+            d.inventory=new int[d.carried];Array.Copy(d.collected,d.deposited,d.inventory,0,d.carried);
             Check(DuckSaveSystem.Valid(d, settings), "Valid save rejected");
             string path = Path.GetFullPath("Temp/DuckValidation/test-save.json");
             Check(DuckSaveSystem.Save(d, path), "Save failed");

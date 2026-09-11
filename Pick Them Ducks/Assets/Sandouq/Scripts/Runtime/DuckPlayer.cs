@@ -6,8 +6,8 @@ namespace Sandouq.Ducks
     [RequireComponent(typeof(CharacterController))]
     public sealed class DuckPlayer : MonoBehaviour
     {
-        public Camera View { get; private set; }
-        public Transform CarryTarget { get; private set; }
+        public Camera View;
+        public Transform CarryTarget;
         DuckGame game;
         CharacterController motor;
         float pitch = 18, gravity;
@@ -15,6 +15,7 @@ namespace Sandouq.Ducks
         {
             game = owner; motor = GetComponent<CharacterController>();
             motor.height = 1.8f; motor.radius = .3f; motor.center = Vector3.up * .9f;
+            if(View != null && CarryTarget != null)return;
             var cameraObject = new GameObject("Player camera", typeof(Camera), typeof(AudioListener));
             cameraObject.transform.SetParent(transform, false); cameraObject.transform.localPosition = Vector3.up * 1.7f;
             View = cameraObject.GetComponent<Camera>(); View.tag = "MainCamera"; View.fieldOfView = 72; View.nearClipPlane = .06f; View.farClipPlane = 400;
@@ -35,8 +36,10 @@ namespace Sandouq.Ducks
                 (keyboard.wKey.isPressed ? 1 : 0) - (keyboard.sKey.isPressed ? 1 : 0));
             axes = Vector2.ClampMagnitude(axes, 1);
             gravity = motor.isGrounded ? -2 : Mathf.Max(-30, gravity - 25 * Time.deltaTime);
+            var before=transform.position;
             motor.Move((transform.TransformDirection(new Vector3(axes.x, 0, axes.y)) *
-                (keyboard.leftShiftKey.isPressed ? game.Settings.sprintSpeed : game.Settings.walkSpeed) + Vector3.up * gravity) * Time.deltaTime);
+                (keyboard.leftShiftKey.isPressed ? game.Settings.sprintSpeed : game.Settings.walkSpeed) * (game.CarryingCasket ? .65f : 1f) + Vector3.up * gravity) * Time.deltaTime);
+            if(game.Park!=null && (game.Park.InLake(transform.position) || Mathf.Abs(transform.position.x)>145 || transform.position.z < -18 || transform.position.z>280))Teleport(before);
         }
         public void Teleport(Vector3 position) { motor.enabled = false; transform.position = position; motor.enabled = true; gravity = 0; }
     }

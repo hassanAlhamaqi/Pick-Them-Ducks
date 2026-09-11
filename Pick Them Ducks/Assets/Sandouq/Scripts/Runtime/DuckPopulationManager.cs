@@ -5,8 +5,8 @@ using UnityEngine.Rendering;
 
 namespace Sandouq.Ducks
 {
-    // Fixed spatial tiles, each <= 1023 instances. Only intersecting tiles are queried.
-    // Matrices are immutable except swap-removal; no population-wide per-frame updates.
+    // World-space cells contain bounded instance batches. Moving ducks rejoin their
+    // destination cell, keeping rendering and queries local even after long throws.
     public sealed class DuckPopulationManager : MonoBehaviour
     {
         sealed class Tile
@@ -17,18 +17,23 @@ namespace Sandouq.Ducks
             public Bounds bounds;
         }
         struct Part { public Mesh mesh; public Material material; public int submesh; public Matrix4x4 local; }
-        Tile[] tiles;
+        readonly List<Tile> tiles = new List<Tile>();
+        readonly Dictionary<Vector2Int, List<int>> cells = new Dictionary<Vector2Int, List<int>>();
+        float cellSize;
         Part[] parts;
         Vector3[] positions;
         float[] angles;
+        Quaternion[] rotations;
+        readonly System.Collections.Generic.Dictionary<int, DuckPose> movedPoses = new System.Collections.Generic.Dictionary<int, DuckPose>();
         int[] tileOf, slotOf;
-        readonly List<int> removed = new List<int>();
+        readonly HashSet<int> removed = new HashSet<int>();
+        readonly HashSet<int> physical = new HashSet<int>();
         readonly Plane[] planes = new Plane[6];
         readonly List<Material> ownedMaterials = new List<Material>();
         Material outline;
         GameObject template;
         Camera view;
-        int columns, rows, tileColumns, cellWidth;
+        int columns, rows, cellWidth;
         float spacing, minX;
         public int HoverId { get; set; } = -1;
         public int Remaining { get; private set; }
@@ -41,44 +46,42 @@ namespace Sandouq.Ducks
         public int VerticesPerDuck { get; private set; }
         public Vector3 Position(int id) => positions[id];
         public float Angle(int id) => angles[id];
+        public Quaternion Rotation(int id) => rotations[id];
         public bool IsAvailable(int id) => id >= 0 && id < Total && slotOf[id] >= 0;
-        public int[] CollectedIds() => removed.ToArray();
+        public bool IsPhysical(int id) => id >= 0 && id < Total && slotOf[id] == -2;
+        public DuckPose[] Poses() => new List<DuckPose>(movedPoses.Values).ToArray();
+        public int[] CollectedIds() => new List<int>(removed).ToArray();
 
         public void Initialize(PrototypeSettings settings, SaveData data, Camera camera)
         {
-            view = camera; spacing = settings.spacing; cellWidth = Mathf.Clamp(settings.cellWidth, 2, 31);
+            view = camera; spacing = Mathf.Min(settings.spacing, 275f / Mathf.CeilToInt(Mathf.Sqrt(data.total))); cellWidth = Mathf.Clamp(settings.cellWidth, 2, 31);
             columns = Mathf.CeilToInt(Mathf.Sqrt(data.total)); rows = Mathf.CeilToInt((float)data.total / columns);
             minX = -columns * spacing * .5f;
-            tileColumns = Mathf.CeilToInt((float)columns / cellWidth);
-            int tileRows = Mathf.CeilToInt((float)rows / cellWidth);
+            rotations = new Quaternion[data.total];
+            var park = FindAnyObjectByType<DuckPark>();
             positions = new Vector3[data.total]; angles = new float[data.total]; tileOf = new int[data.total]; slotOf = new int[data.total];
-            removed.Capacity = data.total;
             PrepareTemplate(settings);
-            tiles = new Tile[tileColumns * tileRows];
-            for (int i = 0; i < tiles.Length; i++)
-            {
-                var t = tiles[i] = new Tile { ids = new int[cellWidth * cellWidth], matrices = new Matrix4x4[parts.Length][] };
-                for (int p = 0; p < parts.Length; p++) t.matrices[p] = new Matrix4x4[t.ids.Length];
-            }
+            cellSize=spacing*cellWidth;
             var random = new System.Random(data.seed);
             for (int id = 0; id < data.total; id++)
             {
                 int x = id % columns, z = id / columns;
                 float worldX = minX + (x + .5f) * spacing;
                 worldX += worldX < 0 ? -2 : 2; // central return lane
-                var pos = new Vector3(worldX + ((float)random.NextDouble() - .5f) * spacing * .22f, 0,
-                    (z + .5f) * spacing + ((float)random.NextDouble() - .5f) * spacing * .22f);
+                var pos = new Vector3(worldX + ((float)random.NextDouble() - .5f) * spacing * .72f, 0,
+                    (z + .5f) * spacing + ((float)random.NextDouble() - .5f) * spacing * .72f);
+                if(park != null) {
+                    // Redistribute lake cells across dry meadow instead of stacking ducks on the bank.
+                    while(park.InLake(pos))pos=new Vector3(12+(float)random.NextDouble()*117,0,8+(float)random.NextDouble()*255);
+                    pos = park.Land(pos);
+                }
                 positions[id] = pos; angles[id] = (float)random.NextDouble() * 360;
-                int tileId = z / cellWidth * tileColumns + x / cellWidth;
-                var tile = tiles[tileId]; int slot = tile.count++;
-                tile.ids[slot] = id; tileOf[id] = tileId; slotOf[id] = slot;
-                var matrix = Matrix4x4.TRS(pos, Quaternion.Euler(0, angles[id], 0), Vector3.one);
-                for (int p = 0; p < parts.Length; p++) tile.matrices[p][slot] = matrix * parts[p].local;
-                var bounds = new Bounds(pos + Vector3.up * settings.duckSize * .5f, Vector3.one * settings.duckSize * 2);
-                if (slot == 0) tile.bounds = bounds; else tile.bounds.Encapsulate(bounds);
+                rotations[id] = Quaternion.Euler(0, angles[id], 0);
+                Insert(id,pos,rotations[id]);
             }
             Remaining = data.total;
             foreach (int id in data.collected) Remove(id);
+            if(data.poses != null) foreach(var pose in data.poses) if(IsAvailable(pose.id)) { Detach(pose.id,false); Settle(pose.id,pose.position,pose.rotation); }
         }
 
         void PrepareTemplate(PrototypeSettings settings)
@@ -125,6 +128,7 @@ namespace Sandouq.Ducks
 
         public bool Remove(int id)
         {
+            if(IsPhysical(id)) { physical.Remove(id); slotOf[id]=-1; Remaining--; removed.Add(id); movedPoses.Remove(id); return true; }
             if (!IsAvailable(id)) return false;
             var tile = tiles[tileOf[id]]; int slot = slotOf[id], last = --tile.count;
             if (slot != last)
@@ -132,21 +136,23 @@ namespace Sandouq.Ducks
                 int moved = tile.ids[last]; tile.ids[slot] = moved; slotOf[moved] = slot;
                 for (int p = 0; p < parts.Length; p++) tile.matrices[p][slot] = tile.matrices[p][last];
             }
-            slotOf[id] = -1; Remaining--; removed.Add(id); return true;
+            slotOf[id] = -1; Remaining--; removed.Add(id); movedPoses.Remove(id); return true;
         }
 
         // Ray/sphere query through only nearby grid tiles. Best candidate is returned without allocations.
-        public int Query(Vector3 origin, Vector3 forward, float range, float coneCos, float rayRadius = 0)
+        public int Query(Vector3 origin, Vector3 forward, float range, float coneCos, float rayRadius = 0, bool includePhysical = true)
         {
             int best = -1; float score = float.PositiveInfinity;
-            int minCol = Mathf.Clamp(Mathf.FloorToInt((origin.x - range - minX - 2) / spacing / cellWidth), 0, tileColumns - 1);
-            int maxCol = Mathf.Clamp(Mathf.FloorToInt((origin.x + range - minX + 2) / spacing / cellWidth), 0, tileColumns - 1);
-            int minRow = Mathf.Max(0, Mathf.FloorToInt((origin.z - range) / spacing / cellWidth));
-            int maxRow = Mathf.Min((tiles.Length / tileColumns) - 1, Mathf.FloorToInt((origin.z + range) / spacing / cellWidth));
             float rangeSq = range * range;
-            for (int z = minRow; z <= maxRow; z++) for (int x = minCol; x <= maxCol; x++)
+            int minCellX=Mathf.FloorToInt((origin.x-range)/cellSize), maxCellX=Mathf.FloorToInt((origin.x+range)/cellSize);
+            int minCellZ=Mathf.FloorToInt((origin.z-range)/cellSize), maxCellZ=Mathf.FloorToInt((origin.z+range)/cellSize);
+            for(int z=minCellZ;z<=maxCellZ;z++)for(int x=minCellX;x<=maxCellX;x++)
             {
-                var tile = tiles[z * tileColumns + x];
+                if(!cells.TryGetValue(new Vector2Int(x,z),out var batches))continue;
+                foreach(int tileIndex in batches)
+                {
+                var tile=tiles[tileIndex];
+                if(tile.bounds.SqrDistance(origin)>rangeSq)continue;
                 for (int s = 0; s < tile.count; s++)
                 {
                     int id = tile.ids[s]; Vector3 delta = positions[id] + Vector3.up * .2f - origin;
@@ -160,7 +166,53 @@ namespace Sandouq.Ducks
                     if (candidate < score) { score = candidate; best = id; }
                 }
             }
+            }
+            if(includePhysical)foreach(int id in physical)
+            {
+                Vector3 delta=positions[id]+Vector3.up*.2f-origin;
+                float sq=delta.sqrMagnitude, along=Vector3.Dot(delta,forward);
+                if(sq>rangeSq || along<=0 || along*along<sq*coneCos*coneCos)continue;
+                float perpendicular=Mathf.Max(0,sq-along*along);
+                if(rayRadius>0 && perpendicular>rayRadius*rayRadius)continue;
+                float candidate=rayRadius>0 ? perpendicular+sq*.002f : sq;
+                if(candidate<score){score=candidate;best=id;}
+            }
             return best;
+        }
+
+        public bool Detach(int id, bool collected)
+        {
+            if(id<0 || id>=Total)return false;
+            if(collected) { if(slotOf[id]!=-1 || !removed.Remove(id))return false; Remaining++; }
+            else { if(!IsAvailable(id))return false; Remove(id); removed.Remove(id); Remaining++; }
+            slotOf[id]=-2; physical.Add(id); return true;
+        }
+        public void UpdatePose(int id, Vector3 p, Quaternion rotation)
+        { positions[id]=p; rotations[id]=rotation; angles[id]=rotation.eulerAngles.y; movedPoses[id]=new DuckPose{id=id,position=p,rotation=rotation}; }
+        public void Settle(int id, Vector3 p, Quaternion rotation)
+        {
+            if(!IsPhysical(id))return;
+            physical.Remove(id); UpdatePose(id,p,rotation);
+            Insert(id,p,rotation);
+        }
+        void Insert(int id, Vector3 position, Quaternion rotation)
+        {
+            var key=new Vector2Int(Mathf.FloorToInt(position.x/cellSize),Mathf.FloorToInt(position.z/cellSize));
+            if(!cells.TryGetValue(key,out var batches)) { batches=new List<int>();cells.Add(key,batches); }
+            int index=-1;
+            foreach(int candidate in batches)if(tiles[candidate].count<256){index=candidate;break;}
+            if(index<0)
+            {
+                index=tiles.Count;
+                var created=new Tile{ids=new int[256],matrices=new Matrix4x4[parts.Length][]};
+                for(int p=0;p<parts.Length;p++)created.matrices[p]=new Matrix4x4[256];
+                tiles.Add(created);batches.Add(index);
+            }
+            var tile=tiles[index];int slot=tile.count++;tile.ids[slot]=id;tileOf[id]=index;slotOf[id]=slot;
+            var matrix=Matrix4x4.TRS(position,rotation,Vector3.one);
+            for(int p=0;p<parts.Length;p++)tile.matrices[p][slot]=matrix*parts[p].local;
+            var bounds=new Bounds(position,Vector3.one*2);
+            if(slot==0)tile.bounds=bounds;else tile.bounds.Encapsulate(bounds);
         }
 
         void LateUpdate() => RenderForCamera(view, true);
@@ -169,7 +221,7 @@ namespace Sandouq.Ducks
         // Keep its culling and diagnostics separate from the player's camera.
         public void RenderForCamera(Camera camera, bool updatePlayerStatistics = false)
         {
-            if (tiles == null || camera == null) return;
+            if (positions == null || camera == null) return;
             GeometryUtility.CalculateFrustumPlanes(camera, planes);
             int calls = 0, visible = 0;
             foreach (var tile in tiles)
@@ -184,12 +236,12 @@ namespace Sandouq.Ducks
                     calls++;
                 }
             }
-            if (outline != null && IsAvailable(HoverId))
+            if (outline != null && (IsAvailable(HoverId) || IsPhysical(HoverId)))
             {
                 for (int p = 0; p < parts.Length; p++)
                 {
                     var part = parts[p];
-                    Graphics.DrawMesh(part.mesh, tiles[tileOf[HoverId]].matrices[p][slotOf[HoverId]],
+                    Graphics.DrawMesh(part.mesh, IsPhysical(HoverId) ? Matrix4x4.TRS(positions[HoverId],rotations[HoverId],Vector3.one)*part.local : tiles[tileOf[HoverId]].matrices[p][slotOf[HoverId]],
                         outline, 0, camera, part.submesh, null, ShadowCastingMode.Off, false, null, LightProbeUsage.Off);
                 }
             }

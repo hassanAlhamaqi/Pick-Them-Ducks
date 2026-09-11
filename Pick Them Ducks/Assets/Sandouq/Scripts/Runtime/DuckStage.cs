@@ -7,14 +7,15 @@ namespace Sandouq.Ducks
     public sealed class DuckStage : MonoBehaviour
     {
         readonly List<Material> materials = new List<Material>();
-        public Transform Box { get; private set; }
-        public Transform DepositTarget { get; private set; }
-        public Transform Shop { get; private set; }
-        public Transform[] ToolModels { get; private set; }
-        public Renderer BoxRim { get; private set; }
-        public Renderer ShopHeader { get; private set; }
-        public readonly Vector3 BoxPosition = new Vector3(-4, 0, -4);
-        public readonly Vector3 ShopPosition = new Vector3(4, 0, -4);
+        public Transform Box;
+        public Transform DepositTarget;
+        public Transform Shop;
+        public Transform[] ToolModels;
+        public Renderer BoxRim;
+        public Renderer ShopHeader;
+        public Vector3 BoxPosition => Box == null ? new Vector3(-4,0,-4) : Box.position;
+        public Vector3 ShopPosition => Shop == null ? new Vector3(4,0,-4) : Shop.position;
+        #if UNITY_EDITOR
         Material teal, navy, yellow, cream, dark, orange;
         public void Build(float width, float length, Transform carry)
         {
@@ -29,7 +30,7 @@ namespace Sandouq.Ducks
             Cube("Front boundary", new Vector3(0, .45f, -12), new Vector3(width + 4, .9f, .5f), navy, transform, true);
             Cube("Far boundary", new Vector3(0, .45f, length + 4), new Vector3(width + 4, .9f, .5f), navy, transform, true);
             for (int i = 0; i < 12; i++) Cube("Lane marker", new Vector3(0, .016f, 4 + i * length / 12), new Vector3(.12f, .015f, 1.3f), yellow);
-            Box = new GameObject("COLLECTION BOX").transform; Box.SetParent(transform); Box.position = BoxPosition;
+            Box = new GameObject("COLLECTION BOX").transform; Box.SetParent(transform); Box.position = new Vector3(-4,0,-4);
             Cube("Base", new Vector3(0, .15f, 0), new Vector3(2.5f, .3f, 1.8f), navy, Box, true);
             Cube("Interior", new Vector3(0, .32f, 0), new Vector3(2.25f, .12f, 1.5f), dark, Box);
             Cube("Back", new Vector3(0, .65f, .85f), new Vector3(2.5f, 1, .15f), navy, Box, true);
@@ -42,7 +43,7 @@ namespace Sandouq.Ducks
             Label("COLLECTION BOX", new Vector3(0, 2.63f, .75f), .16f, Color.white, Box);
             Label("E  /  DEPOSIT & EARN", new Vector3(0, 2.32f, .74f), .09f, new Color(1, .8f, .2f), Box);
             DepositTarget = new GameObject("Deposit landing").transform; DepositTarget.SetParent(Box, false); DepositTarget.localPosition = Vector3.up * .5f;
-            Shop = new GameObject("TOOL SHOP").transform; Shop.SetParent(transform); Shop.position = ShopPosition;
+            Shop = new GameObject("TOOL SHOP").transform; Shop.SetParent(transform); Shop.position = new Vector3(4,0,-4);
             Cube("Counter", new Vector3(0, .6f, 0), new Vector3(2.8f, 1.2f, 1.6f), orange, Shop, true);
             Cube("Countertop", new Vector3(0, 1.25f, 0), new Vector3(3, .15f, 1.8f), cream, Shop);
             Cube("Post L", new Vector3(-1.3f, 1.8f, .6f), new Vector3(.12f, 3.4f, .12f), navy, Shop);
@@ -59,8 +60,8 @@ namespace Sandouq.Ducks
         }
         void BuildTools(Transform carry)
         {
-            ToolModels = new Transform[3];
-            for (int i = 0; i < 3; i++) { ToolModels[i] = new GameObject(((DuckTool)i).ToString()).transform; ToolModels[i].SetParent(carry, false); ToolModels[i].localScale = Vector3.one * .65f; }
+            ToolModels = new Transform[5];
+            for (int i = 0; i < 5; i++) { ToolModels[i] = new GameObject(((DuckTool)i).ToString()).transform; ToolModels[i].SetParent(carry, false); ToolModels[i].localScale = Vector3.one * .65f; }
             Cube("Glove", new Vector3(.06f, -.06f, -.06f), new Vector3(.18f, .11f, .28f), orange, ToolModels[0]);
             var b = ToolModels[1]; Cube("Basket floor", Vector3.zero, new Vector3(.5f, .07f, .4f), yellow, b);
             Cube("Basket front", new Vector3(0, .08f, .2f), new Vector3(.5f, .18f, .04f), yellow, b);
@@ -69,6 +70,12 @@ namespace Sandouq.Ducks
             var v = ToolModels[2]; Cube("Vacuum body", new Vector3(0, -.08f, -.1f), new Vector3(.27f, .3f, .45f), orange, v);
             Cube("Vacuum nozzle", new Vector3(0, .02f, .28f), new Vector3(.18f, .16f, .45f), navy, v);
             Cube("Vacuum mouth", new Vector3(0, .02f, .52f), new Vector3(.3f, .22f, .08f), yellow, v);
+            var fork=ToolModels[3];
+            Cube("Long oak handle",new Vector3(0,0,.15f),new Vector3(.07f,.07f,1.5f),orange,fork);
+            Cube("Fork crossbar",new Vector3(0,0,.88f),new Vector3(.95f,.07f,.1f),navy,fork);
+            for(int i=0;i<5;i++)Cube("Steel tine",new Vector3((i-2)*.21f,0,1.18f),new Vector3(.045f,.045f,.65f),cream,fork);
+            var industrial=ToolModels[4]; Cube("Tank",new Vector3(0,-.1f,-.1f),new Vector3(.4f,.4f,.55f),teal,industrial);
+            Cube("Wide intake",new Vector3(0,0,.5f),new Vector3(.65f,.22f,.7f),yellow,industrial);
         }
         Material Material(string name, Color color)
         {
@@ -78,7 +85,7 @@ namespace Sandouq.Ducks
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube); go.name = name; go.transform.SetParent(parent != null ? parent : transform, false);
             go.transform.localPosition = position; go.transform.localScale = scale; go.GetComponent<Renderer>().sharedMaterial = mat;
-            if (!collision) Destroy(go.GetComponent<Collider>()); return go;
+            if (!collision) DestroyImmediate(go.GetComponent<Collider>()); return go;
         }
         static void Label(string text, Vector3 position, float size, Color color, Transform parent, float yaw = 0)
         {
@@ -90,6 +97,6 @@ namespace Sandouq.Ducks
             if (bounds.x > 0 && bounds.y > 0)
                 go.transform.localScale = Vector3.one * Mathf.Min((size >= .3f ? 8f : 2.9f) / bounds.x, size * 2 / bounds.y);
         }
-        void OnDestroy() { foreach (var mat in materials) Destroy(mat); }
+        #endif
     }
 }
