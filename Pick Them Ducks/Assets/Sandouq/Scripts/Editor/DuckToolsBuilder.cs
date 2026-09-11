@@ -55,8 +55,8 @@ namespace Sandouq.Ducks.Editor
             game.Park.casketPrefab=PrefabUtility.SaveAsPrefabAsset(casket,Folder+"Duck Casket.prefab");Object.DestroyImmediate(casket);
             if(game.Park.casket!=null)game.Park.casket.gameObject.SetActive(false);
             var depot=stage.Box.GetComponent<DuckDepositStation>();if(depot==null)depot=stage.Box.gameObject.AddComponent<DuckDepositStation>();depot.landing=stage.DepositTarget;depot.bounceRoot=stage.Box;
-            // The front intake catches pushed ducks before the authored box's rim collider.
-            depot.intake=new Bounds(new Vector3(0,.4f,-.3f),new Vector3(2.2f,1.5f,2.8f));
+            // Catch rolling ducks outside the walls on every side.
+            depot.intake=new Bounds(new Vector3(0,.55f,0),new Vector3(3.5f,1.8f,3.5f));
             foreach(var tool in stage.ToolModels)tool.gameObject.SetActive(tool==stage.ToolModels[0]);
             PrefabUtility.SaveAsPrefabAssetAndConnect(player.gameObject,Folder+"Player.prefab",InteractionMode.AutomatedAction);
             EditorSceneManager.MarkSceneDirty(game.gameObject.scene);EditorSceneManager.SaveScene(game.gameObject.scene);

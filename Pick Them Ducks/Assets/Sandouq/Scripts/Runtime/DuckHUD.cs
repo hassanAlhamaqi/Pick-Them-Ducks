@@ -48,7 +48,7 @@ namespace Sandouq.Ducks
             var bar = Panel(bottom, new Vector2(22, -60), new Vector2(416, 6), new Color(.15f, .28f, .3f));
             carryFill = Panel(bar, Vector2.zero, new Vector2(416, 6), Gold).GetComponent<Image>();
             Panel(root, Vector2.zero, new Vector2(1600, 48), Ink, new Vector2(.5f, 0), new Vector2(.5f, 0));
-            Label(root, "WASD  move     SHIFT  run     LMB hold/use     E  interact     1-5 tools   RMB throw   F install kit     ESC  pause", 15, Color.white,
+            Label(root, "SPACE JUMP / WASD  move     SHIFT  run     LMB hold/use     E  interact     1-5 tools   RMB throw   F install kit     ESC  pause", 15, Color.white,
                 new Vector2(0, 20), new Vector2(1200, 28), TextAnchor.MiddleCenter, new Vector2(.5f, 0), new Vector2(.5f, 0));
             promptBackdrop = Panel(root, new Vector2(0, -66), new Vector2(760, 45), Ink, new Vector2(.5f, .5f), new Vector2(.5f, 1));
             prompt = Label(root, "", 18, Color.white, new Vector2(0, -70), new Vector2(950, 38), TextAnchor.MiddleCenter, new Vector2(.5f, .5f), new Vector2(.5f, 1));
@@ -131,7 +131,7 @@ namespace Sandouq.Ducks
             for (int i = 0; i < 5; i++)
             {
                 var def = game.Settings.tools[i];
-                toolLabels[i].text = new[]{1,3,4,2,5}[i]+"  "+def.name + "  /  " + def.capacity + " capacity\n" + (i == 1 ? "AUTO-DRIVE COLLECTOR" : i==2 ? "VACUUM" : i==4 ? "RIDE-ON COLLECTOR" : i==3 ? "FLOOR SWEEPER" : "HOLD TO PICK UP") + "    " + (d.owned[i] ? (d.currentTool == i ? "EQUIPPED" : "EQUIP") : "$" + def.cost);
+                toolLabels[i].text = new[]{1,3,4,2,5}[i]+"  "+def.name + "  /  " + (Mathf.Max(Progression.SharedBaseCapacity(d,game.Settings),def.capacity)+Mathf.RoundToInt(d.levels[2]*game.Settings.upgrades[2].amount)) + " shared bag\n" + (i == 1 ? "AUTO-DRIVE COLLECTOR" : i==2 ? "VACUUM" : i==4 ? "RIDE-ON COLLECTOR" : i==3 ? "FLOOR SWEEPER" : "HOLD TO PICK UP") + "    " + (d.owned[i] ? (d.currentTool == i ? "EQUIPPED" : "EQUIP") : "$" + def.cost);
                 toolButtons[i].interactable = d.owned[i] ? d.currentTool != i && d.carried <= p.CapacityFor(i) : d.money >= def.cost;
             }
             for (int i = 0; i < 4; i++)

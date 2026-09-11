@@ -65,6 +65,9 @@ namespace Sandouq.Ducks
             PrepareTemplate(settings);
             cellSize=spacing*cellWidth;
             var random = new System.Random(data.seed);
+            var pileRandom=new System.Random(data.seed^73129);
+            var piles=new Vector3[90];
+            for(int i=0;i<piles.Length;i++){Vector3 center;do{center=new Vector3(-125+(float)pileRandom.NextDouble()*250,0,18+(float)pileRandom.NextDouble()*235);}while(Mathf.Abs(center.x)<10||(park!=null&&park.InLake(center)));piles[i]=center;}
             for (int id = 0; id < data.total; id++)
             {
                 int x = id % columns, z = id / columns;
@@ -76,6 +79,13 @@ namespace Sandouq.Ducks
                     // Redistribute lake cells across dry meadow instead of stacking ducks on the bank.
                     while(park.InLake(pos))pos=new Vector3(12+(float)random.NextDouble()*117,0,8+(float)random.NextDouble()*255);
                     pos = park.Land(pos);
+                }
+                if(park!=null && id%3==0)
+                {
+                    var center=piles[(id/3)%piles.Length];float radius=Mathf.Sqrt((float)pileRandom.NextDouble())*4.2f;
+                    float angle=(float)pileRandom.NextDouble()*Mathf.PI*2;
+                    var candidate=center+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius);
+                    if(!park.InLake(candidate)){pos=park.Land(candidate);pos.y+=Mathf.Max(0,1-radius/4.2f)*.8f*(float)pileRandom.NextDouble();}
                 }
                 positions[id] = pos; angles[id] = (float)random.NextDouble() * 360;
                 rotations[id] = Quaternion.Euler(0, angles[id], 0);

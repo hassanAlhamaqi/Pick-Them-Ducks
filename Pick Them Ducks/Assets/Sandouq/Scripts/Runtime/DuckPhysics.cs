@@ -46,9 +46,27 @@ namespace Sandouq.Ducks
             foreach(var body in pool)if(body.id>=0 && box.Contains(frame.InverseTransformPoint(body.go.transform.position)))
             {body.rb.linearVelocity=new Vector3(velocity.x,body.rb.linearVelocity.y,velocity.z);body.rb.angularVelocity=new Vector3(velocity.z,0,-velocity.x)*3;}
         }
+        public void PullToRoller()
+        {
+            if(game.MenuOpen||!game.CanDrive||game.Placing)return;
+            var frame=game.Player.transform;
+            float reach=game.Progress.Tool==DuckTool.RollerCar?2.2f:1.5f;
+            var area=new Bounds(new Vector3(0,.65f,reach+1.1f),new Vector3(game.Progress.WorkingWidth+2.4f,2.4f,3.8f));
+            for(int i=0;i<4;i++){int id=game.Population.QueryBox(frame,area,false);if(id<0||!Launch(id,game.Population.Position(id),Vector3.zero))break;}
+            foreach(var body in pool)if(body.id>=0&&area.Contains(frame.InverseTransformPoint(body.go.transform.position)))
+            {
+                var local=frame.InverseTransformPoint(body.go.transform.position);
+                var target=frame.TransformPoint(new Vector3(Mathf.Clamp(local.x,-game.Progress.WorkingWidth*.35f,game.Progress.WorkingWidth*.35f),.25f,reach));
+                var direction=target-body.go.transform.position;direction.y=0;
+                var velocity=direction.normalized*(game.Progress.DriveSpeed+3);
+                body.rb.linearVelocity=Vector3.MoveTowards(body.rb.linearVelocity,new Vector3(velocity.x,body.rb.linearVelocity.y,velocity.z),35*Time.fixedDeltaTime);
+                body.rb.WakeUp();body.still=0;
+            }
+        }
         void FixedUpdate()
         {
             if(game==null)return;
+            PullToRoller();
             var player=game.Player.transform.position; var movement=player-previousPlayer; previousPlayer=player;
             if(!game.MenuOpen && movement.sqrMagnitude>.0001f) Push(player+Vector3.up*.2f,movement.normalized,1.25f,4,2.2f);
             foreach(var b in pool)

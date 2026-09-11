@@ -37,7 +37,9 @@ namespace Sandouq.Ducks
         }
         public DuckTool Tool=>(DuckTool)Data.currentTool;
         public ToolDefinition Equipment=>Settings.tools[Data.currentTool];
-        public int CapacityFor(int index)=>Settings.tools[index].capacity+Mathf.RoundToInt(Data.levels[2]*Settings.upgrades[2].amount);
+        public static int SharedBaseCapacity(SaveData data,PrototypeSettings settings)
+        {int capacity=settings.tools[0].capacity;for(int i=0;i<data.owned.Length;i++)if(data.owned[i])capacity=Mathf.Max(capacity,settings.tools[i].capacity);return capacity;}
+        public int CapacityFor(int index)=>SharedBaseCapacity(Data,Settings)+Mathf.RoundToInt(Data.levels[2]*Settings.upgrades[2].amount);
         public int Capacity=>CapacityFor(Data.currentTool);
         public int FreeSpace=>Mathf.Max(0,Capacity-Data.carried);
         public int PickupAmount=>Equipment.batch+Mathf.RoundToInt(Data.levels[0]*Settings.upgrades[0].amount);
@@ -129,7 +131,7 @@ namespace Sandouq.Ducks
         public static bool Valid(SaveData d,PrototypeSettings settings)
         {
             if(d==null||d.version!=3||d.total<1||d.total>1000000||d.money<0||d.carried<0||d.deposited<0||d.casketKits<0||d.stations==null||d.inventory==null||d.casketDucks==null||d.collected==null||d.owned==null||d.owned.Length!=5||!d.owned[0]||d.levels==null||d.levels.Length!=4||d.toolLevels==null||d.toolLevels.Length!=5||d.currentTool<0||d.currentTool>=5||!d.owned[d.currentTool])return false;
-            if((long)d.carried+d.deposited+d.casketDucks.Length!=d.collected.Length||d.inventory.Length!=d.carried||d.collected.Length>d.total||d.carried>settings.tools[d.currentTool].capacity+d.levels[2]*settings.upgrades[2].amount)return false;
+            if((long)d.carried+d.deposited+d.casketDucks.Length!=d.collected.Length||d.inventory.Length!=d.carried||d.collected.Length>d.total||d.carried>Progression.SharedBaseCapacity(d,settings)+d.levels[2]*settings.upgrades[2].amount)return false;
             for(int i=0;i<4;i++)if(d.levels[i]<0||d.levels[i]>settings.upgrades[i].maxLevel)return false;
             foreach(int level in d.toolLevels)if(level<0||level>6)return false;
             if(d.hasPlayerPose&&(!Finite(d.playerPosition)||!float.IsFinite(d.playerYaw)))return false;

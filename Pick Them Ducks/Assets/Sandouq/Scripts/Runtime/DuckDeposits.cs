@@ -16,7 +16,7 @@ namespace Sandouq.Ducks
         public readonly List<DuckDepositStation> Stations=new List<DuckDepositStation>();
         DuckGame game;
         DuckDepositStation transfer;
-        float nextFlight,nextScan;
+        float nextFlight,nextScan,burstStart,lastLaunch=-10;
         public int InFlight {get;private set;}
         public bool Transferring=>transfer!=null||inventoryReservations.Count>0;
         public void Initialize(DuckGame owner)
@@ -45,7 +45,8 @@ namespace Sandouq.Ducks
         }
         public int Begin()
         {
-            if(Transferring){transfer=null;return 0;}
+            if(Transferring){transfer=null;lastLaunch=-10;return 0;}
+            lastLaunch=-10;
             transfer=Nearest(game.Player.transform.position);return transfer==null?0:game.Progress.Data.carried;
         }
         public bool TryIntake(int id,Vector3 from,Vector3 to)
@@ -88,7 +89,10 @@ namespace Sandouq.Ducks
                 if(id<0){transfer=null;return;}
                 inventoryReservations.Add(id);request=new Request{id=id,kind=0,station=transfer,from=game.Player.CarryTarget.position};
             }
-            nextFlight=Time.time+game.Settings.depositInterval;
+            if(Time.time-lastLaunch>.4f)burstStart=Time.time;
+            float acceleration=Mathf.Clamp01((Time.time-burstStart)/3f);
+            nextFlight=Time.time+Mathf.Lerp(game.Settings.depositInterval,.015f,acceleration);lastLaunch=Time.time;
+            free.tween.timeScale=Mathf.Lerp(1,2,acceleration);
             free.request=request;free.active=true;InFlight++;free.visual.SetActive(true);
             free.visual.transform.rotation=game.Population.Rotation(request.id);free.tween.Restart();
         }

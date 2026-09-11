@@ -7,7 +7,7 @@ namespace Sandouq.Ducks
     {
         public Transform landing;
         public Transform bounceRoot;
-        public Bounds intake = new Bounds(new Vector3(0,.35f,-.2f),new Vector3(2.1f,1.1f,2.2f));
+        public Bounds intake = new Bounds(new Vector3(0,.55f,0),new Vector3(3.2f,1.8f,3.2f));
         Vector3 scale;
         Tween bounce;
         public int Landed { get; private set; }

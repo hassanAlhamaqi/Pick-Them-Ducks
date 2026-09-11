@@ -39,13 +39,15 @@ namespace Sandouq.Ducks
             if(driving)axes=new Vector2(axes.x*.35f,1).normalized;
             float speed=driving?game.Progress.DriveSpeed:(keyboard.leftShiftKey.isPressed?game.Settings.sprintSpeed:game.Settings.walkSpeed)*game.Progress.MovementMultiplier;
             motor.radius=game.Progress.Tool==DuckTool.RollerCar?.95f:.3f;
-            gravity = motor.isGrounded ? -2 : Mathf.Max(-30, gravity - 25 * Time.deltaTime);
+            gravity = motor.isGrounded && gravity<=0 ? -2 : Mathf.Max(-30, gravity - 25 * Time.deltaTime);
+            if(keyboard.spaceKey.wasPressedThisFrame)TryJump();
             var before=transform.position;
             motor.Move((transform.TransformDirection(new Vector3(axes.x, 0, axes.y)) *
                 speed + Vector3.up * gravity) * Time.deltaTime);
             if(driving)foreach(Transform part in game.Stage.ToolModels[game.Progress.Data.currentTool])if(part.name.Contains("Roller")||part.name.Contains("Wheel"))part.Rotate(0,speed*Time.deltaTime*90,0,Space.Self);
             if(game.Park!=null && (game.Park.InLake(transform.position) || Mathf.Abs(transform.position.x)>145 || transform.position.z < -18 || transform.position.z>280))Teleport(before);
         }
+        public bool TryJump(){if(motor==null||!motor.isGrounded||gravity>0||game.MenuOpen)return false;gravity=Mathf.Sqrt(2*25*1.35f);return true;}
         public void Teleport(Vector3 position) { motor.enabled = false; transform.position = position; motor.enabled = true; gravity = 0; }
     }
 }

@@ -31,7 +31,7 @@ namespace Sandouq.Ducks
         DuckFeedback feedback;
         GameObject placementPreview;
         Vector3 previousToolPosition;
-        float nextSave,noticeUntil,nextThrow,nextCollect,holdTime,placementYaw;
+        float nextSave,noticeUntil,nextThrow,throwHeld,nextCollect,holdTime,placementYaw;
         int heldTarget=-1;
         readonly Collider[] placementHits=new Collider[64];
         MaterialPropertyBlock previewColor;
@@ -84,7 +84,7 @@ namespace Sandouq.Ducks
             Prompt=Deposits.Transferring?"DEPOSITING DUCKS / E STOP / WALK AWAY TO CANCEL":station!=null?"E DEPOSIT / PUSH DUCKS INTO THE INTAKE":shop?"E OPEN TOOL SHOP":Progress.FreeSpace==0?"BAG FULL / FIND A DEPOSIT STATION":Progress.Tool==DuckTool.Hands?"HOLD LMB ON A DUCK TO PICK UP":Progress.Tool==DuckTool.Sweeper?"HOLD LMB + WALK TO SWEEP DUCKS":"HOLD LMB TO USE / RELEASE TO STOP";
             if(Progress.Tool==DuckTool.Hands)TickHand(id,ToolActive,Time.deltaTime);
             else {TickHand(-1,false,0);if(ToolActive&&Progress.Tool==DuckTool.Vacuum&&Time.time>=nextCollect){nextCollect=Time.time+Progress.Interval;CollectAimed();}}
-            if(mouse.rightButton.isPressed&&Time.time>=nextThrow){nextThrow=Time.time+.18f;ThrowDuck();}
+            TickThrow(mouse.rightButton.isPressed,Time.deltaTime);
         }
         public bool TickHand(int id,bool held,float deltaTime)
         {
@@ -100,7 +100,7 @@ namespace Sandouq.Ducks
         {
             if(Deposits==null)return;
             var movement=Player.transform.position-previousToolPosition;previousToolPosition=Player.transform.position;
-            if(MenuOpen||!ToolActive||Placing||Deposits.Transferring||movement.sqrMagnitude<.0001f)return;
+            if(MenuOpen||!ToolActive||Placing||Deposits.Transferring||(Progress.Tool==DuckTool.Sweeper&&movement.sqrMagnitude<.0001f))return;
             SweepFloor(movement);
         }
         public int SweepFloor(Vector3 movement)
@@ -129,6 +129,12 @@ namespace Sandouq.Ducks
             if(Deposits.Transferring||Placing||(!Population.IsAvailable(id)&&!Population.IsPhysical(id))||!Progress.PickUp())return false;
             Progress.RecordPickup(id);Physics.Release(id);Population.Remove(id);feedback.Fly(Population.Position(id),Population.Angle(id),Player.CarryTarget);feedback.PickupSound((float)Progress.Data.carried/Progress.Capacity);return true;
         }
+        public void TickThrow(bool held,float deltaTime)
+        {
+            if(!held||MenuOpen||Placing||Deposits.Transferring||Progress.Data.carried==0){throwHeld=0;nextThrow=0;return;}
+            throwHeld+=deltaTime;
+            if(Time.time>=nextThrow){nextThrow=Time.time+Mathf.Lerp(.18f,.035f,Mathf.Clamp01(throwHeld/3));ThrowDuck();}
+        }
         public bool ThrowDuck()
         {
             int id=Progress.ThrowId;if(id<0||Placing||Deposits.Transferring)return false;var camera=Player.View.transform;
@@ -141,7 +147,7 @@ namespace Sandouq.Ducks
         public void BeginPlacement()
         {
             if(Progress.Data.casketKits==0||Deposits.Transferring){ShowNotice("Buy a Duck Casket kit at the shop first.");return;}
-            Placing=true;ToolActive=false;placementYaw=Player.transform.eulerAngles.y;
+            Placing=true;throwHeld=0;nextThrow=0;ToolActive=false;placementYaw=Player.transform.eulerAngles.y;
             placementPreview=Instantiate(Park.casketPrefab);placementPreview.name="Duck Casket placement preview";placementPreview.SetActive(true);
             foreach(var c in placementPreview.GetComponentsInChildren<Collider>())c.enabled=false;
             placementPreview.GetComponent<DuckDepositStation>().enabled=false;
@@ -178,7 +184,7 @@ namespace Sandouq.Ducks
         public void BuyTool(int i){if(Progress.BuyTool(i)){RefreshTool();Save();}}
         public void BuyUpgrade(int i){if(Progress.BuyUpgrade(i)){RefreshTool();Save();}}
         public void BuyToolUpgrade(){if(Progress.BuyToolUpgrade()){RefreshTool();Save();}}
-        public void Equip(int i){if(Deposits.Transferring)return;if(Progress.Equip(i)){ToolActive=false;TickHand(-1,false,0);RefreshTool();Save();}else ShowNotice("Not owned, or its bag is too small for your current load.");}
+        public void Equip(int i){if(Deposits.Transferring)return;if(Progress.Equip(i)){ToolActive=false;TickHand(-1,false,0);RefreshTool();Save();}else ShowNotice("Buy this tool at the shop first.");}
         void RefreshTool()
         {
             for(int i=0;i<Stage.ToolModels.Length;i++)
@@ -188,7 +194,7 @@ namespace Sandouq.Ducks
             }
             Player.View.transform.localPosition=Vector3.up*(Progress.Tool==DuckTool.RollerCar?2.15f:1.7f);
         }
-        public void SetMenu(bool open,bool shop=false){MenuOpen=open;ShopOpen=open&&shop;ToolActive=false;TickHand(-1,false,0);Cursor.lockState=open?CursorLockMode.None:CursorLockMode.Locked;Cursor.visible=open;if(HUD!=null)HUD.Refresh();if(open)Save();}
+        public void SetMenu(bool open,bool shop=false){throwHeld=0;nextThrow=0;MenuOpen=open;ShopOpen=open&&shop;ToolActive=false;TickHand(-1,false,0);Cursor.lockState=open?CursorLockMode.None:CursorLockMode.Locked;Cursor.visible=open;if(HUD!=null)HUD.Refresh();if(open)Save();}
         public void ShowNotice(string text,float duration=2){Notice=text;noticeUntil=Time.unscaledTime+duration;}
         public bool Save()
         {

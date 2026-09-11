@@ -76,6 +76,56 @@ namespace Sandouq.Ducks
             Vector3 start=game.Player.transform.position;yield return new WaitForSeconds(.3f);Use(game,false);
             try{Check((game.Player.transform.position-start).magnitude>1,"Vehicle auto-forward movement");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Final conservation");}
             catch(Exception e){Fail(e);yield break;}
+            // Exercise the polished mechanics with real physics and arrival callbacks.
+            game.Equip(0);game.Player.Teleport(game.Park.Land(new Vector3(0,0,70))+Vector3.up*.02f);
+            yield return new WaitForSeconds(.25f);
+            float ground=game.Player.transform.position.y;
+            try{Check(game.Progress.Capacity>=600,"Hands retain unlocked vehicle capacity");Check(game.Player.TryJump(),"Grounded jump starts");}
+            catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(.15f);
+            try{Check(game.Player.transform.position.y>ground+.4f,"Jump raises player");Check(!game.Player.TryJump(),"No airborne double jump");}
+            catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(1);
+            game.Player.enabled=false;
+            foreach(var station in new[]{game.Deposits.Stations[0],installed})
+            {
+                int expected=station.Landed+4;
+                for(int side=0;side<4;side++)
+                {
+                    var outward=Quaternion.Euler(0,side*90,0)*Vector3.forward;int id=12000+side+(station==installed?4:0);
+                    game.Physics.Launch(id,station.transform.position+outward*2.6f+Vector3.up*.12f,-outward*5);
+                }
+                yield return new WaitForSeconds(2);
+                try{Check(station.Landed==expected,"Physical intake from all four sides: "+station.name);}
+                catch(Exception e){Fail(e);yield break;}
+            }
+            game.Equip(1);game.Player.Teleport(game.Park.Land(new Vector3(0,0,70)));game.Player.transform.rotation=Quaternion.identity;
+            game.Population.Detach(13000,false);game.Population.Settle(13000,game.Player.transform.position+new Vector3(1.1f,.03f,3.2f),Quaternion.identity);
+            var pullStart=game.Population.Position(13000);Use(game,true);
+            yield return new WaitForSeconds(.18f);Use(game,false);
+            try{Check(game.Population.IsPhysical(13000)&&game.Population.Position(13000).z<pullStart.z-.1f,"Roller pulls outside-contact duck inward");}
+            catch(Exception e){Fail(e);yield break;}
+            game.Equip(0);
+            for(int i=14000;i<14200;i++)game.CollectId(i);
+            game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*3);game.Deposit();
+            int first=game.Progress.Data.deposited;
+            yield return new WaitForSeconds(1);int slow=game.Progress.Data.deposited-first;
+            yield return new WaitForSeconds(2);first=game.Progress.Data.deposited;
+            yield return new WaitForSeconds(1);int fast=game.Progress.Data.deposited-first;
+            try{Check(fast>slow*2,"Sustained deposit accelerates");}
+            catch(Exception e){Fail(e);yield break;}
+            game.Deposit();yield return new WaitForSeconds(.5f);
+            game.Player.Teleport(game.Park.Land(new Vector3(0,0,100)));game.Player.View.transform.rotation=Quaternion.Euler(-15,0,0);
+            int carried=game.Progress.Data.carried;float elapsed=0;
+            while(elapsed<1){game.TickThrow(true,Time.deltaTime);elapsed+=Time.deltaTime;yield return null;}
+            int slowThrow=carried-game.Progress.Data.carried;elapsed=0;
+            while(elapsed<2){game.TickThrow(true,Time.deltaTime);elapsed+=Time.deltaTime;yield return null;}
+            carried=game.Progress.Data.carried;elapsed=0;
+            while(elapsed<1){game.TickThrow(true,Time.deltaTime);elapsed+=Time.deltaTime;yield return null;}
+            int fastThrow=carried-game.Progress.Data.carried;game.TickThrow(false,0);
+            try{Check(fastThrow>slowThrow*2,"Held throws accelerate");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Polish conservation");}
+            catch(Exception e){Fail(e);yield break;}
+            game.Equip(4);
             game.Player.enabled=false;var camera=game.Player.View.transform;camera.position=installed.transform.position+new Vector3(3,2,-4);camera.LookAt(installed.transform.position+Vector3.up*.5f);
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"installed-casket.png"));yield return null;
             camera.position=game.Player.transform.position+new Vector3(4,3,-6);camera.LookAt(game.Player.transform.position+Vector3.forward*.5f+Vector3.up);
@@ -83,9 +133,11 @@ namespace Sandouq.Ducks
             game.Equip(3);camera.position=game.Player.transform.position+Vector3.up*1.7f;camera.rotation=Quaternion.Euler(38,game.Player.transform.eulerAngles.y,0);
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"duck-sweeper.png"));yield return null;
             game.Equip(1);yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"duck-collector.png"));yield return null;
+            camera.position=new Vector3(60,28,22);camera.LookAt(new Vector3(20,0,80));
+            yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"polished-meadow.png"));yield return null;
             game.SetMenu(true,true);yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"tool-shop.png"));yield return new WaitForSeconds(.5f);
             if(File.Exists(Path.Combine(output,"errors.txt"))){Application.Quit(3);yield break;}
-            File.WriteAllText(Path.Combine(output,"PASS.txt"),"PASS: timed hold/release, incremental arrival credit, in-flight save invariants, per-duck bounce, repeated casket purchases, placement rejection, multiple stations, casket transfers, physical intake, sweeper contact/width, collector contact/speed, roller car capacity/auto-drive and final conservation.");Application.Quit(0);
+            File.WriteAllText(Path.Combine(output,"PASS.txt"),"PASS: timed hold/release, incremental arrival credit, in-flight save invariants, per-duck bounce, repeated casket purchases, placement rejection, multiple stations, casket transfers, physical intake, sweeper contact/width, collector contact/speed, roller car capacity/auto-drive and final conservation; jumping/no double jump, shared capacity, four-sided physical intake on both stations, roller attraction, deposit and throw acceleration.");Application.Quit(0);
         }
         void Log(string message,string trace,LogType type){if(type==LogType.Error||type==LogType.Exception)File.AppendAllText(Path.Combine(output,"errors.txt"),message+"\n"+trace+"\n");}
     }
