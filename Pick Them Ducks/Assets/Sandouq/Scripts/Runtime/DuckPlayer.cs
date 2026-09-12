@@ -35,6 +35,7 @@ namespace Sandouq.Ducks
             Vector2 axes = new Vector2((keyboard.dKey.isPressed ? 1 : 0) - (keyboard.aKey.isPressed ? 1 : 0),
                 (keyboard.wKey.isPressed ? 1 : 0) - (keyboard.sKey.isPressed ? 1 : 0));
             axes = Vector2.ClampMagnitude(axes, 1);
+            if(keyboard.sKey.wasPressedThisFrame)game.Physics.FlushFront();
             bool driving=game.CanDrive && !keyboard.sKey.isPressed;
             if(driving)axes=new Vector2(axes.x*.35f,1).normalized;
             float speed=driving?game.Progress.DriveSpeed:(keyboard.leftShiftKey.isPressed?game.Settings.sprintSpeed:game.Settings.walkSpeed)*game.Progress.MovementMultiplier;
@@ -45,7 +46,7 @@ namespace Sandouq.Ducks
             motor.Move((transform.TransformDirection(new Vector3(axes.x, 0, axes.y)) *
                 speed + Vector3.up * gravity) * Time.deltaTime);
             if(driving)foreach(Transform part in game.Stage.ToolModels[game.Progress.Data.currentTool])if(part.name.Contains("Roller")||part.name.Contains("Wheel"))part.Rotate(0,speed*Time.deltaTime*90,0,Space.Self);
-            if(game.Park!=null && (game.Park.InLake(transform.position) || Mathf.Abs(transform.position.x)>145 || transform.position.z < -18 || transform.position.z>280))Teleport(before);
+            if(game.Park!=null && ((game.Park.InLake(transform.position)&&!game.Park.OnBridge(transform.position)) || Mathf.Abs(transform.position.x)>145 || transform.position.z < -18 || transform.position.z>280))Teleport(before);
         }
         public bool TryJump(){if(motor==null||!motor.isGrounded||gravity>0||game.MenuOpen)return false;gravity=Mathf.Sqrt(2*25*1.35f);return true;}
         public void Teleport(Vector3 position) { motor.enabled = false; transform.position = position; motor.enabled = true; gravity = 0; }

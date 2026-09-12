@@ -14,6 +14,7 @@ namespace Sandouq.Ducks
         public bool[] owned={true,false,false,false,false};
         public int[] levels=new int[4], toolLevels=new int[5];
         public int casketKits;
+        public string[] brokenBushes=Array.Empty<string>();
         public CasketPlacement[] stations=Array.Empty<CasketPlacement>();
         public DuckPose[] poses=Array.Empty<DuckPose>();
         public bool hasPlayerPose;
@@ -50,7 +51,7 @@ namespace Sandouq.Ducks
         public bool CanUpgradeTool=>Tool==DuckTool.Sweeper||Tool==DuckTool.Collector||Tool==DuckTool.RollerCar;
         public int ToolUpgradeCost=>Mathf.CeilToInt((Tool==DuckTool.RollerCar?250:75)*Mathf.Pow(1.6f,ToolLevel));
         public float WorkingWidth=>Equipment.range*(1+ToolLevel*.18f);
-        public float DriveSpeed=>(Tool==DuckTool.RollerCar?11:8)*(1+ToolLevel*.12f)*MovementMultiplier;
+        public float DriveSpeed=>(Tool==DuckTool.RollerCar?20:8)*(1+ToolLevel*.12f)*MovementMultiplier;
         public bool Complete=>Data.deposited==Data.total;
         public void MarkSaved()=>Dirty=false;
         public void Touch(){Dirty=true;Changed?.Invoke();}

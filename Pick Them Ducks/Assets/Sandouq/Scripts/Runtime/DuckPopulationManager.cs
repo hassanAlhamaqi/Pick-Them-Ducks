@@ -82,10 +82,15 @@ namespace Sandouq.Ducks
                 }
                 if(park!=null && id%3==0)
                 {
-                    var center=piles[(id/3)%piles.Length];float radius=Mathf.Sqrt((float)pileRandom.NextDouble())*4.2f;
+                    var center=piles[(id/3)%piles.Length];float radius=Mathf.Sqrt((float)pileRandom.NextDouble())*1.75f;
                     float angle=(float)pileRandom.NextDouble()*Mathf.PI*2;
                     var candidate=center+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius);
-                    if(!park.InLake(candidate)){pos=park.Land(candidate);pos.y+=Mathf.Max(0,1-radius/4.2f)*.8f*(float)pileRandom.NextDouble();}
+                    if(!park.InLake(candidate)){pos=park.Land(candidate);pos.y+=Mathf.Floor(Mathf.Max(0,1-radius/1.75f)*7)*.23f;}
+                }
+                if(park!=null&&id>=data.total-500)
+                {
+                    int n=data.total-1-id;float along=(n%250)/249f*1.7f-.85f;float side=(n%2==0?-1:1)*(2.5f+(n%7)*.13f);
+                    pos=park.lakeCenter+(n<250?new Vector3(side,0,along*park.lakeRadius.y):new Vector3(along*park.lakeRadius.x,0,side));pos.y=park.waterHeight;
                 }
                 positions[id] = pos; angles[id] = (float)random.NextDouble() * 360;
                 rotations[id] = Quaternion.Euler(0, angles[id], 0);

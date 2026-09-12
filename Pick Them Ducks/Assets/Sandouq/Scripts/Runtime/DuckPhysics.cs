@@ -1,11 +1,12 @@
 using UnityEngine;
+using DG.Tweening;
 
 namespace Sandouq.Ducks
 {
     // Only this bounded pool participates in physics. Sleeping ducks return to GPU batches.
     public sealed class DuckPhysics : MonoBehaviour
     {
-        sealed class Body { public GameObject go; public Rigidbody rb; public int id=-1; public float still, age; }
+        sealed class Body { public GameObject go; public Rigidbody rb; public int id=-1; public float still, age; public bool held, flying; public int berth; }
         readonly Body[] pool = new Body[96];
         DuckGame game; Vector3 previousPlayer;
         public int ActiveCount { get; private set; }
@@ -27,14 +28,14 @@ namespace Sandouq.Ducks
             if(free==null || (!fromInventory && !game.Population.IsAvailable(id)))return false;
             if(!game.Population.Detach(id,fromInventory))return false;
             game.Progress.Touch();
-            free.id=id; free.age=free.still=0; free.go.transform.SetPositionAndRotation(position+Vector3.up*.23f,game.Population.Rotation(id));
-            free.go.SetActive(true); free.rb.isKinematic=false; free.rb.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
+            free.held=free.flying=false; free.id=id; free.age=free.still=0; free.go.transform.SetPositionAndRotation(position+Vector3.up*.23f,game.Population.Rotation(id));
+            free.go.transform.localScale=Vector3.one;free.go.SetActive(true); free.rb.isKinematic=false; free.rb.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
             game.Population.UpdatePose(id,position,free.go.transform.rotation);
             free.rb.linearVelocity=velocity; free.rb.angularVelocity=new Vector3(velocity.z,1,-velocity.x)*3; ActiveCount++; return true;
         }
         public void Release(int id)
         { foreach(var b in pool)if(b.id==id){Disable(b);return;} }
-        void Disable(Body b) { b.rb.linearVelocity=Vector3.zero; b.rb.angularVelocity=Vector3.zero; b.rb.collisionDetectionMode=CollisionDetectionMode.Discrete; b.rb.isKinematic=true; b.go.SetActive(false); b.id=-1; ActiveCount--; }
+        void Disable(Body b) { b.go.transform.DOKill(); b.flying=false; if(!b.rb.isKinematic){b.rb.linearVelocity=Vector3.zero; b.rb.angularVelocity=Vector3.zero;} b.held=false; b.rb.collisionDetectionMode=CollisionDetectionMode.Discrete; b.rb.isKinematic=true; b.go.SetActive(false); b.id=-1; ActiveCount--; }
         public int Push(Vector3 origin, Vector3 forward, float range, int count, float force)
         {
             int pushed=0;
@@ -43,39 +44,63 @@ namespace Sandouq.Ducks
         }
         public void SweepActive(Transform frame,Bounds box,Vector3 velocity)
         {
-            foreach(var body in pool)if(body.id>=0 && box.Contains(frame.InverseTransformPoint(body.go.transform.position)))
+            foreach(var body in pool)if(body.id>=0 && !body.held && !body.flying && box.Contains(frame.InverseTransformPoint(body.go.transform.position)))
             {body.rb.linearVelocity=new Vector3(velocity.x,body.rb.linearVelocity.y,velocity.z);body.rb.angularVelocity=new Vector3(velocity.z,0,-velocity.x)*3;}
         }
-        public void PullToRoller()
+        public int CorralRoller(Bounds area)
         {
-            if(game.MenuOpen||!game.CanDrive||game.Placing)return;
-            var frame=game.Player.transform;
-            float reach=game.Progress.Tool==DuckTool.RollerCar?2.2f:1.5f;
-            var area=new Bounds(new Vector3(0,.65f,reach+1.1f),new Vector3(game.Progress.WorkingWidth+2.4f,2.4f,3.8f));
-            for(int i=0;i<4;i++){int id=game.Population.QueryBox(frame,area,false);if(id<0||!Launch(id,game.Population.Position(id),Vector3.zero))break;}
-            foreach(var body in pool)if(body.id>=0&&area.Contains(frame.InverseTransformPoint(body.go.transform.position)))
+            var frame=game.Player.transform;int added=0;
+            for(int i=0;i<game.Progress.PickupAmount&&game.Progress.FreeSpace>0;i++)
             {
-                var local=frame.InverseTransformPoint(body.go.transform.position);
-                var target=frame.TransformPoint(new Vector3(Mathf.Clamp(local.x,-game.Progress.WorkingWidth*.35f,game.Progress.WorkingWidth*.35f),.25f,reach));
-                var direction=target-body.go.transform.position;direction.y=0;
-                var velocity=direction.normalized*(game.Progress.DriveSpeed+3);
-                body.rb.linearVelocity=Vector3.MoveTowards(body.rb.linearVelocity,new Vector3(velocity.x,body.rb.linearVelocity.y,velocity.z),35*Time.fixedDeltaTime);
-                body.rb.WakeUp();body.still=0;
+                int id=game.Population.QueryBox(frame,area);if(id<0)break;
+                Body body=null;foreach(var candidate in pool)if(candidate.id==id){body=candidate;break;}
+                if(body==null&&Launch(id,game.Population.Position(id),Vector3.zero))foreach(var candidate in pool)if(candidate.id==id){body=candidate;break;}
+                if(!game.RecordRollerPickup(id))break;added++;
+                if(body==null)continue;
+                int berth=0;for(;berth<pool.Length;berth++){bool taken=false;foreach(var other in pool)if(other.held&&other.berth==berth){taken=true;break;}if(!taken)break;}
+                body.held=true;body.berth=berth;body.rb.linearVelocity=Vector3.zero;body.rb.angularVelocity=Vector3.zero;
+                body.rb.collisionDetectionMode=CollisionDetectionMode.Discrete;body.rb.isKinematic=true;
             }
+            return added;
+        }
+        public int FrontCount {get{int n=0;foreach(var b in pool)if(b.held)n++;return n;}}
+        public void FlushFront()
+        {
+            int order=0;foreach(var b in pool)if(b.held)
+            {
+                b.held=false;b.flying=true;var start=b.go.transform.position;float t=0;
+                DOTween.To(()=>t,v=>{t=v;b.go.transform.position=Vector3.Lerp(start,game.Player.CarryTarget.position,v)+Vector3.up*Mathf.Sin(v*Mathf.PI)*.5f;b.go.transform.localScale=Vector3.one*Mathf.Lerp(1,.1f,v);},1,.38f).SetDelay(order++*.012f).SetTarget(b.go.transform).OnComplete(()=>{Disable(b);b.go.transform.localScale=Vector3.one;});
+            }
+        }
+        void MoveCorral(Body body)
+        {
+            if(!game.CanDrive||game.Placing)
+            {FlushFront();return;}
+            float width=game.Progress.WorkingWidth;int columns=Mathf.Max(2,Mathf.FloorToInt(width/.4f));
+            int row=(body.berth/columns)%3,layer=body.berth/(columns*3);
+            float reach=game.Progress.Tool==DuckTool.RollerCar?2.65f:2f;
+            var target=game.Player.transform.TransformPoint(new Vector3(((body.berth%columns)+.5f)/columns*width-width*.5f,0,reach+row*.39f));
+            target.y=game.Park.Ground(target)+.23f+layer*.3f;
+            // Kinematic front slots prevent high-speed launches. Ducks remain world-owned.
+            body.rb.MovePosition(target);body.rb.MoveRotation(body.rb.rotation*Quaternion.Euler(12,0,0));
+            body.still=0;
         }
         void FixedUpdate()
         {
             if(game==null)return;
-            PullToRoller();
             var player=game.Player.transform.position; var movement=player-previousPlayer; previousPlayer=player;
             if(!game.MenuOpen && movement.sqrMagnitude>.0001f) Push(player+Vector3.up*.2f,movement.normalized,1.25f,4,2.2f);
             foreach(var b in pool)
             {
-                if(b.id<0)continue;
+                if(b.id<0||b.flying)continue;
+                if(b.held){if(!game.MenuOpen)MoveCorral(b);}
+                if(b.held||b.flying)continue;
                 b.age+=Time.fixedDeltaTime;
                 var p=b.go.transform.position-Vector3.up*.19f;
                 if(game.Deposits!=null && game.Deposits.TryIntake(b.id,game.Population.Position(b.id),p)){Disable(b);continue;}
                 game.Population.UpdatePose(b.id,p,b.go.transform.rotation);
+                if(b.held)continue;
+                if(game.Park.InLake(p)&&p.y<game.Park.waterHeight+.05f){p.y=game.Park.waterHeight;game.Population.Settle(b.id,p,b.go.transform.rotation);Disable(b);continue;}
                 b.still=b.rb.linearVelocity.sqrMagnitude<.025f && b.rb.angularVelocity.sqrMagnitude<.08f ? b.still+Time.fixedDeltaTime : 0;
                 if(b.still>.65f || b.rb.IsSleeping() || p.y < -10)
                 {

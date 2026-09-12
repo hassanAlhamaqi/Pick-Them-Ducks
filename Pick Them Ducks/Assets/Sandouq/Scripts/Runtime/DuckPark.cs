@@ -9,6 +9,8 @@ namespace Sandouq.Ducks
         public Transform casket; // Legacy scene template, hidden at runtime.
         public GameObject casketPrefab;
         public Vector3 lakeCenter = new Vector3(-62, 0, 100);
+        public float waterHeight=-.26f;
+        public bool OnBridge(Vector3 p)=>InLake(p)&&(Mathf.Abs(p.x-lakeCenter.x)<2.1f||Mathf.Abs(p.z-lakeCenter.z)<2.1f);
         public Vector2 lakeRadius = new Vector2(38, 52);
         public float Ground(Vector3 p) => terrain == null ? 0 : terrain.SampleHeight(p) + terrain.transform.position.y;
         public bool InLake(Vector3 p) => Mathf.Pow((p.x-lakeCenter.x)/lakeRadius.x,2)+Mathf.Pow((p.z-lakeCenter.z)/lakeRadius.y,2)<1;

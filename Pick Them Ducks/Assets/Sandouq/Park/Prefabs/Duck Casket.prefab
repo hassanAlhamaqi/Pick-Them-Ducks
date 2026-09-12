@@ -161,8 +161,8 @@ MonoBehaviour:
   landing: {fileID: 8807886671329025704}
   bounceRoot: {fileID: 4058746024469746293}
   intake:
-    m_Center: {x: 0, y: 0.35, z: -0.2}
-    m_Extent: {x: 1.05, y: 0.55, z: 1.1}
+    m_Center: {x: 0, y: 0.55, z: 0}
+    m_Extent: {x: 1.6, y: 0.9, z: 1.6}
 --- !u!1 &4170613294559676600
 GameObject:
   m_ObjectHideFlags: 0

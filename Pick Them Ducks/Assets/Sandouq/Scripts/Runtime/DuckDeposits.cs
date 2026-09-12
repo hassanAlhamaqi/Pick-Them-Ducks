@@ -9,7 +9,7 @@ namespace Sandouq.Ducks
     {
         struct Request { public int id, kind; public Vector3 from; public DuckDepositStation station; }
         sealed class Flight { public GameObject visual; public Tween tween; public Request request; public float t; public bool active; }
-        readonly Flight[] flights=new Flight[16];
+        readonly Flight[] flights=new Flight[256];
         readonly Queue<Request> waiting=new Queue<Request>();
         readonly HashSet<int> inventoryReservations=new HashSet<int>();
         readonly HashSet<int> legacyReservations=new HashSet<int>();
@@ -73,7 +73,15 @@ namespace Sandouq.Ducks
                 }
             }
             if(Time.time<nextFlight)return;
-            Flight free=null;foreach(var f in flights)if(!f.active){free=f;break;}if(free==null)return;
+            if(Time.time-lastLaunch>.4f)burstStart=Time.time;
+            float acceleration=Mathf.Clamp01((Time.time-burstStart)/3f);
+            int launched=0;
+            for(int i=0;i<game.Progress.PickupAmount;i++){if(!LaunchNext(acceleration))break;launched++;}
+            if(launched>0){nextFlight=Time.time+Mathf.Lerp(game.Settings.depositInterval,.015f,acceleration);lastLaunch=Time.time;}
+        }
+        bool LaunchNext(float acceleration)
+        {
+            Flight free=null;foreach(var f in flights)if(!f.active){free=f;break;}if(free==null)return false;
             Request request;
             if(waiting.Count>0)request=waiting.Dequeue();
             else if(game.Progress.Data.casketDucks.Length>legacyReservations.Count)
@@ -83,23 +91,20 @@ namespace Sandouq.Ducks
             }
             else
             {
-                if(transfer==null)return;
-                if((transfer.transform.position-game.Player.transform.position).sqrMagnitude>16){transfer=null;return;}
+                if(transfer==null)return false;
+                if((transfer.transform.position-game.Player.transform.position).sqrMagnitude>16){transfer=null;return false;}
                 int id=-1;foreach(int candidate in game.Progress.Data.inventory)if(!inventoryReservations.Contains(candidate)){id=candidate;break;}
-                if(id<0){transfer=null;return;}
+                if(id<0){transfer=null;return false;}
                 inventoryReservations.Add(id);request=new Request{id=id,kind=0,station=transfer,from=game.Player.CarryTarget.position};
             }
-            if(Time.time-lastLaunch>.4f)burstStart=Time.time;
-            float acceleration=Mathf.Clamp01((Time.time-burstStart)/3f);
-            nextFlight=Time.time+Mathf.Lerp(game.Settings.depositInterval,.015f,acceleration);lastLaunch=Time.time;
             free.tween.timeScale=Mathf.Lerp(1,2,acceleration);
             free.request=request;free.active=true;InFlight++;free.visual.SetActive(true);
-            free.visual.transform.rotation=game.Population.Rotation(request.id);free.tween.Restart();
+            free.visual.transform.rotation=game.Population.Rotation(request.id);free.tween.Restart();return true;
         }
         void Animate(Flight f,float t)
         {
             f.t=t;var destination=f.request.station.landing.position;
-            f.visual.transform.position=Vector3.Lerp(f.request.from,destination,t)+Vector3.up*Mathf.Sin(t*Mathf.PI)*.85f;
+            f.visual.transform.position=Vector3.Lerp(f.request.from,destination,t)+Vector3.up*Mathf.Sin(t*Mathf.PI)*(.85f+(f.request.id%3)*.14f)+game.Player.transform.right*Mathf.Sin(t*Mathf.PI)*((f.request.id%5)-2)*.16f;
             float squash=1+.12f*Mathf.Sin(t*Mathf.PI*3);
             f.visual.transform.localScale=new Vector3(1/squash,squash,1/squash)*Mathf.Lerp(1,.55f,t*t);
         }

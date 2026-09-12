@@ -68,7 +68,7 @@ namespace Sandouq.Ducks
                 Check(game.SweepFloor(Vector3.forward*.15f)>0,"Floor sweeper pushes contacted ducks");
                 game.BuyTool(1);float speed=game.Progress.DriveSpeed;game.BuyToolUpgrade();Check(game.Progress.DriveSpeed>speed,"Collector grows faster");
                 game.Population.Detach(3000,false);game.Population.Settle(3000,game.Park.Land(game.Player.transform.position+Vector3.forward*1.5f),Quaternion.identity);
-                Check(game.SweepFloor(Vector3.forward*.2f)>0,"Roller collector picks up floor contact");
+                Check(game.SweepFloor(Vector3.forward*.2f)>0,"Roller pushes floor contact");
                 game.BuyTool(4);Check(game.Progress.Capacity>=600,"Roller car biggest bag");
                 game.Player.Teleport(game.Park.Land(new Vector3(0,0,70))+Vector3.up*.05f);game.SetMenu(false);Use(game,true);
             }
@@ -99,13 +99,28 @@ namespace Sandouq.Ducks
                 try{Check(station.Landed==expected,"Physical intake from all four sides: "+station.name);}
                 catch(Exception e){Fail(e);yield break;}
             }
-            game.Equip(1);game.Player.Teleport(game.Park.Land(new Vector3(0,0,70)));game.Player.transform.rotation=Quaternion.identity;
-            game.Population.Detach(13000,false);game.Population.Settle(13000,game.Player.transform.position+new Vector3(1.1f,.03f,3.2f),Quaternion.identity);
-            var pullStart=game.Population.Position(13000);Use(game,true);
-            yield return new WaitForSeconds(.18f);Use(game,false);
-            try{Check(game.Population.IsPhysical(13000)&&game.Population.Position(13000).z<pullStart.z-.1f,"Roller pulls outside-contact duck inward");}
-            catch(Exception e){Fail(e);yield break;}
+            foreach(int tool in new[]{1,4})
+            {
+                game.Equip(tool);game.Player.Teleport(game.Park.Land(new Vector3(0,0,70)));game.Player.transform.rotation=Quaternion.identity;
+                int duck=13000+tool;float reach=tool==4?2.3f:1.7f;
+                game.Population.Detach(duck,false);game.Population.Settle(duck,game.Player.transform.position+new Vector3(.3f,.03f,reach),Quaternion.identity);
+                int bagBefore=game.Progress.Data.carried;Use(game,true);game.SweepFloor(Vector3.forward*.2f);
+                yield return new WaitForSeconds(.2f);
+                game.Player.Teleport(game.Player.transform.position+Vector3.forward*4);
+                yield return new WaitForSeconds(.2f);
+                try{Check(!game.Population.IsAvailable(duck)&&!game.Population.IsPhysical(duck)&&game.Progress.Data.carried>bagBefore,"Roller credits bag while displaying front pile: "+tool);Check(game.Physics.FrontCount>0,"Visible front pile: "+tool);if(tool==4)Check(game.Progress.DriveSpeed>=20,"Fast car speed");}
+                catch(Exception e){Fail(e);yield break;}
+                Use(game,false);yield return new WaitForSeconds(.7f);
+                try{Check(game.Physics.FrontCount==0,"Front pile pulls into player on release");}catch(Exception e){Fail(e);yield break;}
+            }
             game.Equip(0);
+            game.Progress.Data.levels[0]=2;
+            for(int i=15000;i<15003;i++)game.CollectId(i);
+            game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*3);game.Deposit();
+            yield return null;
+            try{Check(game.Deposits.InFlight==3,"Pickup amount three launches three simultaneous ducks");}
+            catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(1.6f);game.Progress.Data.levels[0]=0;
             for(int i=14000;i<14200;i++)game.CollectId(i);
             game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*3);game.Deposit();
             int first=game.Progress.Data.deposited;
@@ -125,6 +140,15 @@ namespace Sandouq.Ducks
             int fastThrow=carried-game.Progress.Data.carried;game.TickThrow(false,0);
             try{Check(fastThrow>slowThrow*2,"Held throws accelerate");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Polish conservation");}
             catch(Exception e){Fail(e);yield break;}
+            var habitats=game.Park.GetComponentsInChildren<DuckHabitat>();DuckHabitat bush=null,tree=null;foreach(var habitat in habitats){if(habitat.bush&&bush==null)bush=habitat;else if(!habitat.bush&&tree==null)tree=habitat;}
+            try{Check(bush!=null&&tree!=null,"Interactive bushes and trees authored");Check(bush.Interact()&&!bush.Interact(),"Bush breaks once");Check(System.Array.IndexOf(game.Progress.Data.brokenBushes,bush.Key)>=0,"Broken bush persists");Check(tree.Interact(),"Tree shake starts");Check(game.Park.terrain.terrainData.detailPrototypes.Length>0,"Dense grass authored");}
+            catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(1.5f);
+            try{int id=game.Population.Total-501-bush.index*10;Check(game.Population.IsAvailable(id)&&game.Population.Position(id).y>game.Park.Ground(game.Population.Position(id))-.1f,"Bush reveals ducks");Check(game.Population.Position(game.Population.Total-1).y==game.Park.waterHeight,"Floating lake ducks");}
+            catch(Exception e){Fail(e);yield break;}
+            game.Player.Teleport(game.Park.lakeCenter+Vector3.up*1.2f);game.Player.enabled=true;yield return new WaitForSeconds(.5f);game.Player.enabled=false;
+            try{Check(game.Park.InLake(game.Player.transform.position)&&game.Player.transform.position.y>game.Park.waterHeight,"Bridge permits lake traversal");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Habitat save conservation");}
+            catch(Exception e){Fail(e);yield break;}
             game.Equip(4);
             game.Player.enabled=false;var camera=game.Player.View.transform;camera.position=installed.transform.position+new Vector3(3,2,-4);camera.LookAt(installed.transform.position+Vector3.up*.5f);
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"installed-casket.png"));yield return null;
@@ -135,9 +159,13 @@ namespace Sandouq.Ducks
             game.Equip(1);yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"duck-collector.png"));yield return null;
             camera.position=new Vector3(60,28,22);camera.LookAt(new Vector3(20,0,80));
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"polished-meadow.png"));yield return null;
+            camera.position=game.Park.lakeCenter+new Vector3(0,2,-12);camera.rotation=Quaternion.Euler(28,0,0);
+            yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"lake-bridges.png"));yield return null;
+            camera.position=game.Park.Land(new Vector3(12,0,24))+Vector3.up*1.7f;camera.rotation=Quaternion.Euler(28,50,0);
+            yield return new WaitForSeconds(.25f);yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"dense-grass.png"));yield return null;
             game.SetMenu(true,true);yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"tool-shop.png"));yield return new WaitForSeconds(.5f);
             if(File.Exists(Path.Combine(output,"errors.txt"))){Application.Quit(3);yield break;}
-            File.WriteAllText(Path.Combine(output,"PASS.txt"),"PASS: timed hold/release, incremental arrival credit, in-flight save invariants, per-duck bounce, repeated casket purchases, placement rejection, multiple stations, casket transfers, physical intake, sweeper contact/width, collector contact/speed, roller car capacity/auto-drive and final conservation; jumping/no double jump, shared capacity, four-sided physical intake on both stations, roller attraction, deposit and throw acceleration.");Application.Quit(0);
+            File.WriteAllText(Path.Combine(output,"PASS.txt"),"PASS: timed hold/release, incremental arrival credit, in-flight save invariants, per-duck bounce, repeated casket purchases, placement rejection, multiple stations, casket transfers, physical intake, sweeper contact/width, collector contact/speed, roller car capacity/auto-drive and final conservation; jumping/no double jump, shared capacity, four-sided physical intake on both stations, roller bag collection with front visuals and release pull-in, grouped deposits, breakable bushes, tree shaking, dense grass, floating ducks, bridge traversal, deposit and throw acceleration.");Application.Quit(0);
         }
         void Log(string message,string trace,LogType type){if(type==LogType.Error||type==LogType.Exception)File.AppendAllText(Path.Combine(output,"errors.txt"),message+"\n"+trace+"\n");}
     }
