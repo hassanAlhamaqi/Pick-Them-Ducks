@@ -23,8 +23,7 @@ namespace Sandouq.Ducks
             public void Finish() { visual.SetActive(false); }
         }
         Flight[] pool;
-        AudioSource pickupAudio, depositAudio;
-        AudioClip pickupClip, depositClip;
+        public AudioSource pickupAudio, depositAudio;
         int cursor;
         float nextSound;
         public void Initialize(DuckPopulationManager population, int size)
@@ -37,21 +36,6 @@ namespace Sandouq.Ducks
                 var f = pool[i] = new Flight { visual = population.CreateVisual(transform) };
                 f.tween = DOTween.To(() => f.progress, f.Animate, 1f, .34f).SetEase(Ease.InQuad).SetAutoKill(false).Pause().OnComplete(f.Finish);
             }
-            pickupAudio = gameObject.AddComponent<AudioSource>(); pickupAudio.playOnAwake = false; pickupAudio.volume = .2f;
-            depositAudio = gameObject.AddComponent<AudioSource>(); depositAudio.playOnAwake = false; depositAudio.volume = .28f;
-            pickupClip = Tone("Rubber squeak", .09f, 580, 970);
-            depositClip = Tone("Deposit chime", .45f, 520, 1040);
-            pickupAudio.clip = pickupClip; depositAudio.clip = depositClip;
-        }
-        static AudioClip Tone(string name, float duration, float low, float high)
-        {
-            const int rate = 22050; var samples = new float[(int)(rate * duration)]; float phase = 0;
-            for (int i = 0; i < samples.Length; i++)
-            {
-                float t = (float)i / samples.Length; phase += Mathf.Lerp(low, high, t) * 2 * Mathf.PI / rate;
-                samples[i] = Mathf.Sin(phase) * Mathf.Sin(Mathf.PI * t) * (1 - t) * .55f;
-            }
-            var clip = AudioClip.Create(name, samples.Length, 1, rate, false); clip.SetData(samples, 0); return clip;
         }
         public void Fly(Vector3 from, float angle, Transform target, bool depositing = false)
         {
@@ -76,7 +60,7 @@ namespace Sandouq.Ducks
         void OnDestroy()
         {
             if (pool != null) foreach (var f in pool) f.tween.Kill();
-            if (pickupClip != null) Destroy(pickupClip); if (depositClip != null) Destroy(depositClip);
+
         }
     }
 }

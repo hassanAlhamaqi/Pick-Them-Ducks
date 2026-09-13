@@ -8,6 +8,7 @@ namespace Sandouq.Ducks
     public sealed class DuckPhysics : MonoBehaviour
     {
         sealed class Body { public GameObject go; public Rigidbody rb; public int id=-1; public float still, age; public bool held, flying; public int berth; }
+        public GameObject rollingDuckPrefab;
         readonly Body[] pool = new Body[96];
         DuckGame game; Vector3 previousPlayer;
         public int ActiveCount { get; private set; }
@@ -16,10 +17,8 @@ namespace Sandouq.Ducks
             game=owner; previousPlayer=game.Player.transform.position;
             for(int i=0;i<pool.Length;i++)
             {
-                var root=new GameObject("Reusable rolling duck"); root.transform.SetParent(transform);
-                var visual=game.Population.CreateVisual(root.transform); visual.SetActive(true); visual.transform.localPosition=Vector3.down*.19f;
-                var shape=root.AddComponent<SphereCollider>(); shape.radius=.22f;
-                var rb=root.AddComponent<Rigidbody>(); rb.mass=.18f; rb.linearDamping=.7f; rb.angularDamping=.9f; rb.maxAngularVelocity=18; rb.isKinematic=true;
+                var root=Instantiate(rollingDuckPrefab,transform);
+                var rb=root.GetComponent<Rigidbody>();rb.isKinematic=true;
                 root.SetActive(false); pool[i]=new Body{go=root,rb=rb};
             }
         }

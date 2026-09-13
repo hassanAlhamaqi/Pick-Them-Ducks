@@ -22,8 +22,8 @@ namespace Sandouq.Ducks
         public void Initialize(DuckGame owner)
         {
             game=owner;var station=game.Stage.Box.GetComponent<DuckDepositStation>();
-            if(station==null)station=game.Stage.Box.gameObject.AddComponent<DuckDepositStation>();
-            station.landing=game.Stage.DepositTarget;Stations.Add(station);
+            if(station==null)throw new System.InvalidOperationException("Assign DuckDepositStation on the Collection Box prefab.");
+            Stations.Add(station);
             foreach(var placement in game.Progress.Data.stations)AddStation(placement);
             for(int i=0;i<flights.Length;i++)
             {

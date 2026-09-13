@@ -92,6 +92,7 @@ GameObject:
   - component: {fileID: 4416805096397990987}
   - component: {fileID: 7787482621695577599}
   - component: {fileID: 2358800094002813400}
+  - component: {fileID: 6292163459141049299}
   m_Layer: 0
   m_Name: Journal Buy Button
   m_TagString: Untagged
@@ -216,3 +217,19 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &6292163459141049299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6668694500027020646}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14

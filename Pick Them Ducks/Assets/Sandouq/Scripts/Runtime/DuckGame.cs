@@ -13,6 +13,10 @@ namespace Sandouq.Ducks
         public bool isolatedTest;
         public DuckHUD hudPrefab;
         public DuckHUD authoredHUD;
+        public DuckPopulationManager populationComponent;
+        public DuckPhysics physicsComponent;
+        public DuckFeedback feedbackComponent;
+        public DuckDeposits depositsComponent;
         public Progression Progress {get;private set;}
         public DuckPopulationManager Population {get;private set;}
         public DuckPhysics Physics {get;private set;}
@@ -46,16 +50,16 @@ namespace Sandouq.Ducks
             if(DuckParkPlayChecks.Running)isolatedTest=true;
             var data=isolatedTest?new SaveData{total=Settings.totalDucks,seed=Settings.seed}:DuckSaveSystem.Load(Settings);
             Progress=new Progression(Settings,data);Player=authoredPlayer;Stage=authoredStage;
-            if(Player==null||Stage==null||Park==null||Park.casketPrefab==null){Debug.LogError("Open the updated authored DuckPrototype scene.");enabled=false;return;}
+            if(Player==null||Stage==null||Park==null||Park.casketPrefab==null||populationComponent==null||physicsComponent==null||feedbackComponent==null||depositsComponent==null||(authoredHUD==null&&hudPrefab==null)){Debug.LogError("Open the updated authored DuckPrototype scene.");enabled=false;return;}
             Player.Initialize(this);
             if(data.hasPlayerPose){var restored=data.playerPosition;if(Park.WalkableWater(restored))restored.y=Park.WaterSupportHeight(restored)+.05f;else restored=Park.Land(restored)+Vector3.up*.05f;Player.Teleport(restored);Player.transform.rotation=Quaternion.Euler(0,data.playerYaw,0);}
-            Population=new GameObject("Instanced duck population").AddComponent<DuckPopulationManager>();Population.transform.SetParent(transform);Population.Initialize(Settings,data,Player.View);
-            Physics=gameObject.AddComponent<DuckPhysics>();Physics.Initialize(this);
-            feedback=gameObject.AddComponent<DuckFeedback>();feedback.Initialize(Population,Settings.animationPoolSize);
+            Population=populationComponent;Population.Initialize(Settings,data,Player.View);
+            Physics=physicsComponent;Physics.Initialize(this);
+            feedback=feedbackComponent;feedback.Initialize(Population,Settings.animationPoolSize);
             if(Park.casket!=null)Park.casket.gameObject.SetActive(false);
-            Deposits=gameObject.AddComponent<DuckDeposits>();Deposits.Initialize(this);
+            Deposits=depositsComponent;Deposits.Initialize(this);
             habitats=Park.GetComponentsInChildren<DuckHabitat>();var moved=new System.Collections.Generic.HashSet<int>();if(data.poses!=null)foreach(var pose in data.poses)moved.Add(pose.id);foreach(var habitat in habitats)habitat.Initialize(this,moved);
-            HUD=authoredHUD!=null?authoredHUD:hudPrefab!=null?Instantiate(hudPrefab,transform):gameObject.AddComponent<DuckHUD>();HUD.Initialize(this);
+            HUD=authoredHUD!=null?authoredHUD:Instantiate(hudPrefab,transform);HUD.Initialize(this);
             RefreshTool();previousToolPosition=Player.transform.position;nextSave=Time.unscaledTime+Settings.autosaveSeconds;
             if(!isolatedTest)SetMenu(Progress.Complete);
         }

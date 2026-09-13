@@ -368,6 +368,7 @@ GameObject:
   - component: {fileID: 5719044712356097502}
   - component: {fileID: 189167322216789107}
   - component: {fileID: 6715262992459222841}
+  - component: {fileID: 9184960118000959921}
   m_Layer: 0
   m_Name: Upgrades tab
   m_TagString: Untagged
@@ -492,6 +493,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &9184960118000959921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 688366506264303759}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &738834038754388526
 GameObject:
   m_ObjectHideFlags: 0
@@ -663,6 +680,7 @@ GameObject:
   - component: {fileID: 319592029388414187}
   - component: {fileID: 8255736660905802659}
   - component: {fileID: 7439945003859640263}
+  - component: {fileID: 733140513047686204}
   m_Layer: 0
   m_Name: SWEEPER slot
   m_TagString: Untagged
@@ -788,6 +806,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &733140513047686204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963030455397166960}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &976635607556794632
 GameObject:
   m_ObjectHideFlags: 0
@@ -1516,6 +1550,7 @@ GameObject:
   - component: {fileID: 6590998995603666095}
   - component: {fileID: 657469031111625928}
   - component: {fileID: 6222891236243192883}
+  - component: {fileID: 7056723885258657593}
   m_Layer: 0
   m_Name: Field guide tab
   m_TagString: Untagged
@@ -1640,6 +1675,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &7056723885258657593
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1936094964080967520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &1956495368650513739
 GameObject:
   m_ObjectHideFlags: 0
@@ -2245,6 +2296,7 @@ GameObject:
   - component: {fileID: 8344957231167752224}
   - component: {fileID: 4560900894643603199}
   - component: {fileID: 8811365950497378308}
+  - component: {fileID: 7215572363336307451}
   m_Layer: 0
   m_Name: Open journal
   m_TagString: Untagged
@@ -2369,6 +2421,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &7215572363336307451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2457517488343744130}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &2503237405181111583
 GameObject:
   m_ObjectHideFlags: 0
@@ -3042,6 +3110,7 @@ GameObject:
   - component: {fileID: 8711459724777897050}
   - component: {fileID: 4805140946859779941}
   - component: {fileID: 6045629336142603539}
+  - component: {fileID: 5558490546041503927}
   m_Layer: 0
   m_Name: ROLLER CAR slot
   m_TagString: Untagged
@@ -3167,6 +3236,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &5558490546041503927
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3308391068631027559}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &3355299957856440770
 GameObject:
   m_ObjectHideFlags: 0
@@ -4488,6 +4573,7 @@ GameObject:
   - component: {fileID: 9070160916682438965}
   - component: {fileID: 8772095500705806801}
   - component: {fileID: 2304225323722389282}
+  - component: {fileID: 3416154554068580229}
   m_Layer: 0
   m_Name: Card
   m_TagString: Untagged
@@ -4612,6 +4698,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &3416154554068580229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5131505631612336009}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &5161774808120696098
 GameObject:
   m_ObjectHideFlags: 0
@@ -5207,6 +5309,7 @@ GameObject:
   - component: {fileID: 8137739802881746332}
   - component: {fileID: 5138449163928006842}
   - component: {fileID: 3515779017486824419}
+  - component: {fileID: 7269877327542219723}
   m_Layer: 0
   m_Name: Card
   m_TagString: Untagged
@@ -5331,6 +5434,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &7269877327542219723
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6073670368927939672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &6125610944827165646
 GameObject:
   m_ObjectHideFlags: 0
@@ -5344,6 +5463,7 @@ GameObject:
   - component: {fileID: 7250373905991069670}
   - component: {fileID: 1671312040081301251}
   - component: {fileID: 1867372203236054308}
+  - component: {fileID: 8881510852032782856}
   m_Layer: 0
   m_Name: VACUUM slot
   m_TagString: Untagged
@@ -5469,6 +5589,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &8881510852032782856
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6125610944827165646}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &6175746786244931353
 GameObject:
   m_ObjectHideFlags: 0
@@ -5683,6 +5819,7 @@ GameObject:
   - component: {fileID: 591164893491056392}
   - component: {fileID: 5276261757297734449}
   - component: {fileID: 2324668693526586835}
+  - component: {fileID: 887675856738691329}
   m_Layer: 0
   m_Name: ROLLER slot
   m_TagString: Untagged
@@ -5808,6 +5945,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &887675856738691329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6315098994015551934}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &6516592242908785170
 GameObject:
   m_ObjectHideFlags: 0
@@ -6374,6 +6527,7 @@ GameObject:
   - component: {fileID: 7009164604434943460}
   - component: {fileID: 8428700266419275125}
   - component: {fileID: 9174228525459944223}
+  - component: {fileID: 9070080256950792374}
   m_Layer: 0
   m_Name: HANDS slot
   m_TagString: Untagged
@@ -6499,6 +6653,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &9070080256950792374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7599634771981539634}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &7668022734167813306
 GameObject:
   m_ObjectHideFlags: 0
@@ -6512,6 +6682,7 @@ GameObject:
   - component: {fileID: 8930956496131766624}
   - component: {fileID: 6049441526414595750}
   - component: {fileID: 2738021569545074810}
+  - component: {fileID: 2751622026165709126}
   m_Layer: 0
   m_Name: Card
   m_TagString: Untagged
@@ -6636,6 +6807,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &2751622026165709126
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7668022734167813306}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &7792134343535149461
 GameObject:
   m_ObjectHideFlags: 0
@@ -6728,6 +6915,7 @@ GameObject:
   - component: {fileID: 1038135684468199532}
   - component: {fileID: 5310687427228518043}
   - component: {fileID: 2496734532259605468}
+  - component: {fileID: 5126635291227892535}
   m_Layer: 0
   m_Name: Tools tab
   m_TagString: Untagged
@@ -6852,6 +7040,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &5126635291227892535
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8037371905018193878}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 538d9c47df568514daff0caffb2a27b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hoverScale: 1.045
+  selectedScale: 1.07
+  pressedScale: 0.95
+  duration: 0.14
 --- !u!1 &8091888367096531119
 GameObject:
   m_ObjectHideFlags: 0

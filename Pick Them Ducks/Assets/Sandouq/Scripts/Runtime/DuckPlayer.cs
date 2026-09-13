@@ -15,15 +15,8 @@ namespace Sandouq.Ducks
         public void Initialize(DuckGame owner)
         {
             game = owner;lastSafe=transform.position; motor = GetComponent<CharacterController>();
-            motor.height = 1.8f; motor.radius = .3f; motor.center = Vector3.up * .9f;
-            if(View != null && CarryTarget != null)return;
-            var cameraObject = new GameObject("Player camera", typeof(Camera), typeof(AudioListener));
-            cameraObject.transform.SetParent(transform, false); cameraObject.transform.localPosition = Vector3.up * 1.7f;
-            View = cameraObject.GetComponent<Camera>(); View.tag = "MainCamera"; View.fieldOfView = 72; View.nearClipPlane = .06f; View.farClipPlane = 400;
-            View.clearFlags = CameraClearFlags.SolidColor; View.backgroundColor = new Color(.65f, .84f, .91f);
-            View.transform.localEulerAngles = new Vector3(pitch, 0, 0);
-            CarryTarget = new GameObject("Carry target").transform; CarryTarget.SetParent(View.transform, false);
-            CarryTarget.localPosition = new Vector3(.38f, -.42f, .7f);
+            if(View==null||CarryTarget==null){Debug.LogError("Assign the camera and carry target on the Player prefab.",this);enabled=false;}
+
         }
         void Update()
         {

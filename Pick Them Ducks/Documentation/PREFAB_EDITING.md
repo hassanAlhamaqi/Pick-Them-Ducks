@@ -43,3 +43,14 @@ Picking ducks from an elevated ground pile wakes nearby elevated ducks through t
 
 
 Tool upgrades appear in the purchased tool row on the Tools tab. Sweeper, Collector and Roller Car rows show their own level, cost and UPGRADE/MAXED state. Upgrading a row does not switch the equipped tool. The Upgrades tab contains only the four player upgrades; the shared fifth row is shown for Tools and Field Guide. Existing prefab styling and disabled HUD objects are preserved.
+
+
+## Skybox and reusable components
+
+The Player camera now uses Skybox background instead of Solid Color. Open Window > Rendering > Lighting > Environment and assign Skybox Material to try the imported materials. The default demonstration uses Fantasy Skybox FREE / Panoramics / FS017 / FS017_Day. The camera reads the scene setting; runtime code no longer creates or restyles a fallback camera.
+
+`Duck Game Systems.prefab` contains Population, Physics, Feedback and Deposits components, plus audio sources with replaceable audio clips. The scene DuckGame references those components. `Rolling Duck.prefab` contains its Rigidbody, sphere collider and normalized visual. `Collection Box.prefab` now owns its deposit-station component and landing target.
+
+UI buttons have DuckUIAnimation: edit Hover Scale, Selected Scale, Pressed Scale and Duration in the prefab inspector. Journal Buy Button is shared by the purchase/upgrade rows. Tweens use unscaled time and only animate selection on a state change. Existing Button colors remain editable.
+
+The remaining duck template normalization and instance batching are rendering preparation for the supplied duck prefab. Fixed pools instantiate reusable visuals; they do not regenerate authored scenery or UI. Benchmark and editor-preview objects remain isolated testing/editor infrastructure.
