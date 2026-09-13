@@ -7,22 +7,41 @@ namespace Sandouq.Ducks
     public sealed class DuckHabitat:MonoBehaviour
     {
         public bool bush;public int index;public float crownHeight=3;
+        [Range(1,10)] public int duckCount=10;public float interactionRange=5;public float shakeStrength=4;
         DuckGame game;readonly List<int> ducks=new List<int>();bool broken,shaking;float cooldown;
+        public Transform[] spawnPoints=Array.Empty<Transform>();
+        public bool Hovered {get;set;}
+        MeshFilter[] meshes;Material hoverMaterial;
         public string Key=>"habitat-"+index;
         public bool Available=>!broken;
-        public string Hint=>bush?"E BREAK BUSH / REVEAL HIDDEN DUCKS":"E SHAKE TREE / DROP PERCHED DUCKS";
+        public string Hint=>bush?"LMB / E BREAK BUSH / REVEAL HIDDEN DUCKS":"LMB / E SHAKE TREE / DROP PERCHED DUCKS";
         public void Initialize(DuckGame owner,HashSet<int> moved)
         {
-            game=owner;broken=bush&&Array.IndexOf(game.Progress.Data.brokenBushes??Array.Empty<string>(),Key)>=0;
-            for(int i=0;i<10;i++)
+            game=owner;meshes=GetComponentsInChildren<MeshFilter>();hoverMaterial=new Material(owner.Settings.outlineShader);hoverMaterial.SetFloat("_Width",.035f);broken=bush&&Array.IndexOf(game.Progress.Data.brokenBushes??Array.Empty<string>(),Key)>=0;
+            for(int i=0;i<duckCount;i++)
             {
                 int id=game.Population.Total-501-index*10-i;if(id<0)continue;ducks.Add(id);
                 if(!game.Population.IsAvailable(id)||moved.Contains(id))continue;
-                float angle=i*2.399f;var p=transform.position+new Vector3(Mathf.Cos(angle)*(bush?.45f:1.1f),0,Mathf.Sin(angle)*(bush?.45f:1.1f));
-                p.y=bush?game.Park.Ground(p)+(broken?.15f:-6):transform.position.y+Mathf.Lerp(2.1f,crownHeight,i/9f);
+                var p=SpawnPosition(i);if(bush)p.y=game.Park.Ground(p)+(broken?.15f:-6);
                 game.Population.Detach(id,false);game.Population.Settle(id,p,Quaternion.Euler(0,i*47,0));
             }
             if(broken)Hide();
+        }
+        public Vector3 SpawnPosition(int i)
+        {
+            if(i<spawnPoints.Length&&spawnPoints[i]!=null)return spawnPoints[i].position;
+            float angle=i*2.399f;return transform.position+new Vector3(Mathf.Cos(angle)*1.1f,Mathf.Lerp(2.1f,crownHeight,i/9f),Mathf.Sin(angle)*1.1f);
+        }
+        public bool RayHit(Ray ray,out float distance)
+        {
+            distance=float.PositiveInfinity;if(meshes==null)return false;
+            foreach(var mesh in meshes){var renderer=mesh.GetComponent<Renderer>();if(renderer!=null&&renderer.enabled&&renderer.bounds.IntersectRay(ray,out float hit)&&hit<distance)distance=hit;}
+            return distance<=interactionRange;
+        }
+        void LateUpdate()
+        {
+            if(!Hovered||broken||game==null||game.MenuOpen||hoverMaterial==null)return;
+            foreach(var filter in meshes){var renderer=filter.GetComponent<Renderer>();if(renderer==null||!renderer.enabled)continue;for(int sub=0;sub<filter.sharedMesh.subMeshCount;sub++)Graphics.DrawMesh(filter.sharedMesh,filter.transform.localToWorldMatrix,hoverMaterial,0,game.Player.View,sub,null,UnityEngine.Rendering.ShadowCastingMode.Off,false);}
         }
         public bool Interact()
         {
@@ -34,7 +53,7 @@ namespace Sandouq.Ducks
                 {var p=transform.position+new Vector3(Mathf.Sin(n*2.4f),0,Mathf.Cos(n*2.4f))*.7f;p.y=game.Park.Ground(p)+.12f+(n++/5)*.22f;game.Population.Detach(id,false);game.Population.Settle(id,p,Quaternion.identity);}
                 transform.DOPunchScale(Vector3.one*.2f,.15f).OnComplete(()=>transform.DOScale(Vector3.zero,.2f).OnComplete(Hide));
             }
-            else{shaking=true;transform.DOPunchRotation(new Vector3(0,0,4),.75f,8,.5f);}
+            else{shaking=true;transform.DOPunchRotation(new Vector3(0,0,shakeStrength),.75f,8,.5f);}
             game.Progress.Touch();return true;
         }
         void Update()
@@ -45,6 +64,6 @@ namespace Sandouq.Ducks
             shaking=pending;
         }
         void Hide(){foreach(var r in GetComponentsInChildren<Renderer>())r.enabled=false;foreach(var c in GetComponentsInChildren<Collider>())c.enabled=false;}
-        void OnDestroy(){transform.DOKill();}
+        void OnDestroy(){transform.DOKill();if(hoverMaterial!=null)Destroy(hoverMaterial);}
     }
 }

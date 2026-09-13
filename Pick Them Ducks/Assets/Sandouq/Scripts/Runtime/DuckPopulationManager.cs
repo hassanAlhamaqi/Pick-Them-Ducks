@@ -89,8 +89,10 @@ namespace Sandouq.Ducks
                 }
                 if(park!=null&&id>=data.total-500)
                 {
-                    int n=data.total-1-id;float along=(n%250)/249f*1.7f-.85f;float side=(n%2==0?-1:1)*(2.5f+(n%7)*.13f);
-                    pos=park.lakeCenter+(n<250?new Vector3(side,0,along*park.lakeRadius.y):new Vector3(along*park.lakeRadius.x,0,side));pos.y=park.waterHeight;
+                    do { float angle=(float)pileRandom.NextDouble()*Mathf.PI*2;float radius=Mathf.Sqrt((float)pileRandom.NextDouble())*.92f;
+                    pos=park.lakeCenter+new Vector3(Mathf.Cos(angle)*radius*park.lakeRadius.x,0,Mathf.Sin(angle)*radius*park.lakeRadius.y);
+                    } while(park.WalkableWater(pos));
+                    pos.y=park.waterHeight;
                 }
                 positions[id] = pos; angles[id] = (float)random.NextDouble() * 360;
                 rotations[id] = Quaternion.Euler(0, angles[id], 0);

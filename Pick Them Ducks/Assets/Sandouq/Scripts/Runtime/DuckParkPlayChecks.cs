@@ -149,6 +149,16 @@ namespace Sandouq.Ducks
             game.Player.Teleport(game.Park.lakeCenter+Vector3.up*1.2f);game.Player.enabled=true;yield return new WaitForSeconds(.5f);game.Player.enabled=false;
             try{Check(game.Park.InLake(game.Player.transform.position)&&game.Player.transform.position.y>game.Park.waterHeight,"Bridge permits lake traversal");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Habitat save conservation");}
             catch(Exception e){Fail(e);yield break;}
+            try{
+                Check(tree.spawnPoints.Length==tree.duckCount,"Editable tree spawn markers");
+                Check(game.Park.platforms.Length>20,"Authored lake stepping prefabs");
+                int scattered=0;for(int i=game.Population.Total-500;i<game.Population.Total;i++){var p=game.Population.Position(i);if(Mathf.Abs(p.x-game.Park.lakeCenter.x)>8&&Mathf.Abs(p.z-game.Park.lakeCenter.z)>8)scattered++;}Check(scattered>150,"Ducks distributed beyond bridges");
+            }catch(Exception e){Fail(e);yield break;}
+            var landing=game.Park.platforms[0];game.Player.Teleport(landing.transform.position+Vector3.up*1.2f);game.Player.enabled=true;yield return new WaitForSeconds(.6f);game.Player.enabled=false;
+            try{Check((game.Player.transform.position-landing.transform.position).sqrMagnitude<4,"Player lands on stepping prefab");}catch(Exception e){Fail(e);yield break;}
+            var water=game.Park.lakeCenter+new Vector3(10,0,10);while(game.Park.WalkableWater(water))water.x+=.3f;water.y=game.Park.waterHeight+.8f;
+            game.Physics.Launch(17001,water,Vector3.down*2);yield return new WaitForSeconds(1.2f);
+            try{Check(!game.Population.IsPhysical(17001)&&Mathf.Abs(game.Population.Position(17001).y-game.Park.waterHeight)<.01f,"Physical duck settles afloat");}catch(Exception e){Fail(e);yield break;}
             game.Equip(4);
             game.Player.enabled=false;var camera=game.Player.View.transform;camera.position=installed.transform.position+new Vector3(3,2,-4);camera.LookAt(installed.transform.position+Vector3.up*.5f);
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"installed-casket.png"));yield return null;
@@ -163,7 +173,10 @@ namespace Sandouq.Ducks
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"lake-bridges.png"));yield return null;
             camera.position=game.Park.Land(new Vector3(12,0,24))+Vector3.up*1.7f;camera.rotation=Quaternion.Euler(28,50,0);
             yield return new WaitForSeconds(.25f);yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"dense-grass.png"));yield return null;
-            game.SetMenu(true,true);yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"tool-shop.png"));yield return new WaitForSeconds(.5f);
+            game.SetMenu(true,true);
+            try{Check(game.authoredHUD!=null&&game.HUD==game.authoredHUD&&game.HUD.HasAuthoredLayout,"Authored UI prefab is used");int level=game.Progress.Data.levels[0];foreach(var button in game.HUD.GetComponentsInChildren<UnityEngine.UI.Button>(true))if(button.name=="Pickup Amount buy button")button.onClick.Invoke();Check(game.Progress.Data.levels[0]==level+1,"Serialized prefab buy button is bound");foreach(var outline in game.HUD.GetComponentsInChildren<UnityEngine.UI.Outline>(true))Check(Vector4.Distance(outline.effectColor,(Color)new Color32(249,192,1,255))<.01f,"Yellow UI outlines");}
+            catch(Exception e){Fail(e);yield break;}
+            yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"tool-shop.png"));yield return new WaitForSeconds(.5f);
             if(File.Exists(Path.Combine(output,"errors.txt"))){Application.Quit(3);yield break;}
             File.WriteAllText(Path.Combine(output,"PASS.txt"),"PASS: timed hold/release, incremental arrival credit, in-flight save invariants, per-duck bounce, repeated casket purchases, placement rejection, multiple stations, casket transfers, physical intake, sweeper contact/width, collector contact/speed, roller car capacity/auto-drive and final conservation; jumping/no double jump, shared capacity, four-sided physical intake on both stations, roller bag collection with front visuals and release pull-in, grouped deposits, breakable bushes, tree shaking, dense grass, floating ducks, bridge traversal, deposit and throw acceleration.");Application.Quit(0);
         }

@@ -11,6 +11,8 @@ namespace Sandouq.Ducks
         public DuckPlayer authoredPlayer;
         public DuckPark Park;
         public bool isolatedTest;
+        public DuckHUD hudPrefab;
+        public DuckHUD authoredHUD;
         public Progression Progress {get;private set;}
         public DuckPopulationManager Population {get;private set;}
         public DuckPhysics Physics {get;private set;}
@@ -27,9 +29,9 @@ namespace Sandouq.Ducks
         public float HoldProgress {get;private set;}
         public bool ToolActive {get;private set;}
         public bool Placing {get;private set;}
-        public bool CanDrive=>ToolActive&&!Deposits.Transferring&&(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar);
+        public bool CanDrive=>ToolActive&&!Deposits.Transferring&&Progress.FreeSpace>0&&!Player.Braking&&(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar);
         DuckFeedback feedback;
-        DuckHabitat[] habitats;
+        DuckHabitat[] habitats;DuckHabitat hoveredHabitat;
         GameObject placementPreview;
         Vector3 previousToolPosition;
         float nextSave,noticeUntil,nextThrow,throwHeld,nextCollect,holdTime,placementYaw;
@@ -46,14 +48,14 @@ namespace Sandouq.Ducks
             Progress=new Progression(Settings,data);Player=authoredPlayer;Stage=authoredStage;
             if(Player==null||Stage==null||Park==null||Park.casketPrefab==null){Debug.LogError("Open the updated authored DuckPrototype scene.");enabled=false;return;}
             Player.Initialize(this);
-            if(data.hasPlayerPose){var restored=data.playerPosition;if(Park.OnBridge(restored))restored.y=.5f;else restored=Park.Land(restored)+Vector3.up*.05f;Player.Teleport(restored);Player.transform.rotation=Quaternion.Euler(0,data.playerYaw,0);}
+            if(data.hasPlayerPose){var restored=data.playerPosition;if(Park.WalkableWater(restored))restored.y=Park.WaterSupportHeight(restored)+.05f;else restored=Park.Land(restored)+Vector3.up*.05f;Player.Teleport(restored);Player.transform.rotation=Quaternion.Euler(0,data.playerYaw,0);}
             Population=new GameObject("Instanced duck population").AddComponent<DuckPopulationManager>();Population.transform.SetParent(transform);Population.Initialize(Settings,data,Player.View);
             Physics=gameObject.AddComponent<DuckPhysics>();Physics.Initialize(this);
             feedback=gameObject.AddComponent<DuckFeedback>();feedback.Initialize(Population,Settings.animationPoolSize);
             if(Park.casket!=null)Park.casket.gameObject.SetActive(false);
             Deposits=gameObject.AddComponent<DuckDeposits>();Deposits.Initialize(this);
             habitats=Park.GetComponentsInChildren<DuckHabitat>();var moved=new System.Collections.Generic.HashSet<int>();if(data.poses!=null)foreach(var pose in data.poses)moved.Add(pose.id);foreach(var habitat in habitats)habitat.Initialize(this,moved);
-            HUD=gameObject.AddComponent<DuckHUD>();HUD.Initialize(this);
+            HUD=authoredHUD!=null?authoredHUD:hudPrefab!=null?Instantiate(hudPrefab,transform):gameObject.AddComponent<DuckHUD>();HUD.Initialize(this);
             RefreshTool();previousToolPosition=Player.transform.position;nextSave=Time.unscaledTime+Settings.autosaveSeconds;
             if(!isolatedTest)SetMenu(Progress.Complete);
         }
@@ -68,6 +70,7 @@ namespace Sandouq.Ducks
             if(keys.escapeKey.wasPressedThisFrame){if(Placing)CancelPlacement();else SetMenu(!MenuOpen);}
             if(keys.tabKey.wasPressedThisFrame)SetMenu(!MenuOpen,true);
             if(keys.f3Key.wasPressedThisFrame)Diagnostics=!Diagnostics;
+            if(hoveredHabitat!=null){hoveredHabitat.Hovered=false;hoveredHabitat=null;}
             if(MenuOpen){ToolActive=false;TickHand(-1,false,0);Population.HoverId=-1;return;}
             if(Cursor.lockState!=CursorLockMode.Locked){if(mouse.leftButton.wasPressedThisFrame)SetMenu(false);return;}
             if(keys.fKey.wasPressedThisFrame){if(Placing)CancelPlacement();else BeginPlacement();}
@@ -84,6 +87,8 @@ namespace Sandouq.Ducks
             ToolActive=mouse.leftButton.isPressed&&!Deposits.Transferring;
             var camera=Player.View.transform;
             int id=Population.Query(camera.position,camera.forward,Progress.Range,.4f,.3f);
+            bool habitatInput=habitat!=null&&id<0;
+            if(habitatInput){hoveredHabitat=habitat;habitat.Hovered=true;if(mouse.leftButton.wasPressedThisFrame)habitat.Interact();ToolActive=false;}
             Population.HoverId=Progress.FreeSpace>0&&(Progress.Tool==DuckTool.Hands||Progress.Tool==DuckTool.Vacuum)?id:-1;
             Prompt=Deposits.Transferring?"DEPOSITING DUCKS / E STOP / WALK AWAY TO CANCEL":station!=null?"E DEPOSIT / PUSH DUCKS INTO THE INTAKE":shop?"E OPEN TOOL SHOP":habitat!=null?habitat.Hint:Progress.FreeSpace==0&&(Progress.Tool==DuckTool.Hands||Progress.Tool==DuckTool.Vacuum)?"BAG FULL / FIND A DEPOSIT STATION":Progress.Tool==DuckTool.Hands?"HOLD LMB ON A DUCK TO PICK UP":Progress.Tool==DuckTool.Sweeper?"HOLD LMB + WALK TO SWEEP DUCKS":(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar)?"HOLD LMB TO COLLECT / RELEASE TO PULL DUCKS INTO YOUR BAG":"HOLD LMB TO USE / RELEASE TO STOP";
             if(Progress.Tool==DuckTool.Hands)TickHand(id,ToolActive,Time.deltaTime);
@@ -154,9 +159,10 @@ namespace Sandouq.Ducks
         public void DepositLanded(){feedback.DepositSound(1);if(Progress.Complete){Save();SetMenu(true);ShowNotice("EVERY DUCK DEPOSITED!",60);}}
         public DuckHabitat FocusedHabitat()
         {
-            DuckHabitat result=null;float nearest=5;
+            DuckHabitat result=null;float nearest=float.PositiveInfinity;
             if(habitats==null)return null;
-            foreach(var h in habitats)if(h.Available){var d=h.transform.position-Player.transform.position;float distance=d.magnitude;if(distance<nearest&&Vector3.Dot(Player.transform.forward,d.normalized)>.35f){result=h;nearest=distance;}}
+            var ray=new Ray(Player.View.transform.position,Player.View.transform.forward);
+            foreach(var h in habitats)if(h.Available&&h.RayHit(ray,out float distance)&&distance<nearest){result=h;nearest=distance;}
             return result;
         }
         bool Near(Vector3 p)=>(Player.transform.position-p).sqrMagnitude<3.4f*3.4f;

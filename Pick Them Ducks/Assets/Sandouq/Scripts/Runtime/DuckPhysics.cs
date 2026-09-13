@@ -80,7 +80,7 @@ namespace Sandouq.Ducks
             int row=(body.berth/columns)%3,layer=body.berth/(columns*3);
             float reach=game.Progress.Tool==DuckTool.RollerCar?2.65f:2f;
             var target=game.Player.transform.TransformPoint(new Vector3(((body.berth%columns)+.5f)/columns*width-width*.5f,0,reach+row*.39f));
-            target.y=game.Park.Ground(target)+.23f+layer*.3f;
+            target.y=(game.Park.WalkableWater(target)?game.Park.WaterSupportHeight(target):game.Park.Ground(target))+.23f+layer*.3f;
             // Kinematic front slots prevent high-speed launches. Ducks remain world-owned.
             body.rb.MovePosition(target);body.rb.MoveRotation(body.rb.rotation*Quaternion.Euler(12,0,0));
             body.still=0;
@@ -100,12 +100,13 @@ namespace Sandouq.Ducks
                 if(game.Deposits!=null && game.Deposits.TryIntake(b.id,game.Population.Position(b.id),p)){Disable(b);continue;}
                 game.Population.UpdatePose(b.id,p,b.go.transform.rotation);
                 if(b.held)continue;
-                if(game.Park.InLake(p)&&p.y<game.Park.waterHeight+.05f){p.y=game.Park.waterHeight;game.Population.Settle(b.id,p,b.go.transform.rotation);Disable(b);continue;}
+                if(game.Park.InLake(p)&&p.y<game.Park.waterHeight+.05f){p.y=game.Park.waterHeight;game.Population.Settle(b.id,p,Quaternion.Euler(0,b.go.transform.eulerAngles.y,0));Disable(b);continue;}
                 b.still=b.rb.linearVelocity.sqrMagnitude<.025f && b.rb.angularVelocity.sqrMagnitude<.08f ? b.still+Time.fixedDeltaTime : 0;
                 if(b.still>.65f || b.rb.IsSleeping() || p.y < -10)
                 {
                     if(game.Park!=null) {
-                        if(game.Park.InLake(p) || Mathf.Abs(p.x)>145 || p.z< -18 || p.z>280 || p.y<game.Park.Ground(p)-.1f)p=game.Park.Land(p);
+                        if(game.Park.InLake(p)&&!game.Park.WalkableWater(p)){p.y=game.Park.waterHeight;b.go.transform.rotation=Quaternion.Euler(0,b.go.transform.eulerAngles.y,0);}
+                        else if(Mathf.Abs(p.x)>145 || p.z< -18 || p.z>280 || p.y<game.Park.Ground(p)-.1f)p=game.Park.Land(p);
                     }
                     game.Population.Settle(b.id,p,b.go.transform.rotation); Disable(b);
                 }

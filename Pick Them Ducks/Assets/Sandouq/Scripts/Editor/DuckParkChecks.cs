@@ -5,6 +5,5 @@ namespace Sandouq.Ducks.Editor
     {
         public static void Run()=>DuckPrototypeChecks.Run(AssetDatabase.LoadAssetAtPath<PrototypeSettings>(DuckPrototypeBuilder.SettingsPath));
         public static void ValidateAndBuild(){Run();DuckPrototypeBuilder.BuildValidationPlayer();}
-        public static void RefreshAndBuild(){DuckParkBuilder.Build();DuckToolsBuilder.UpgradeScene();ValidateAndBuild();}
     }
 }

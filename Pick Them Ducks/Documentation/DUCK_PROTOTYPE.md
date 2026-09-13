@@ -31,6 +31,6 @@ Duck Caskets cost $450 each, can be purchased repeatedly, and become permanent d
 
 ## Editing and validation
 
-Terrain, bridges, habitats, scenery and stations are authored scene objects. `DuckNatureBuilder.Build` rebuilds the current exploration layout in the chosen project and makes a validation player; use an isolated copy if your main scene has unsaved work. Habitat indices provide stable save keys, so preserve them when moving habitat objects manually.
+Terrain, bridges, habitats, scenery and stations are authored scene objects. The old generation commands have been removed. `Sandouq > Ducks > Build authored Windows player` builds the saved scene and preserves prefab edits. Habitat indices provide stable save keys, so preserve them when moving habitat objects manually.
 
 Validation evidence for each iteration is under `Documentation/`; older reports describe their respective builds. New spawn layouts apply to uncollected IDs without a saved moved pose. Player progress is saved atomically with a backup.

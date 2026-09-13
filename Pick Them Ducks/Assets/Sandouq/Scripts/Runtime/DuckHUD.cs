@@ -1,50 +1,39 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 namespace Sandouq.Ducks
 {
  public sealed class DuckHUD:MonoBehaviour
  {
-  DuckGame game;Font font;Sprite rounded,circle;Texture2D texture,disc;RectTransform root,journal;Text money,total,carry,percent,left,prompt,notice,subtitle,diagnostics;Image bagFill,ring,hold;
-  Text[] titles=new Text[5],values=new Text[5],costs=new Text[5],slotText=new Text[5];Button[] buys=new Button[5],slots=new Button[5],tabs=new Button[3];int page;bool reset;float next;
+  DuckGame game;
+  [SerializeField] RectTransform root,journal;[SerializeField] Text money,total,carry,percent,left,prompt,notice,subtitle,diagnostics;[SerializeField] Image bagFill,ring,hold;
+  [SerializeField] Button openButton,closeButton,freshButton,backButton;
+  public Color selectionColor=new Color(.84f,.27f,.72f);Color[] slotColors,tabColors;Color[] slotTextColors;
+  public bool HasAuthoredLayout=>root!=null;
+  [SerializeField] Text[] titles=new Text[5],values=new Text[5],costs=new Text[5],slotText=new Text[5];[SerializeField] Button[] buys=new Button[5],slots=new Button[5],tabs=new Button[3];int page;bool reset;float next;
   readonly int[] order={0,3,1,2,4};readonly string[] toolNames={"HANDS","ROLLER","VACUUM","SWEEPER","ROLLER CAR"};
-  static readonly Color Cream=new Color(.99f,.98f,.92f),Ink=new Color(.10f,.26f,.18f),Sage=new Color(.88f,.94f,.86f),Gold=new Color(1,.82f,.20f),Pink=new Color(.84f,.27f,.72f);
   public void Initialize(DuckGame owner)
   {
-   game=owner;font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");rounded=SpriteShape(false,out texture);circle=SpriteShape(true,out disc);
-   var go=new GameObject("Duck Journal HUD",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));go.transform.SetParent(transform);go.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;var scaler=go.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,900);scaler.matchWidthOrHeight=.5f;root=go.GetComponent<RectTransform>();
-   if(FindAnyObjectByType<EventSystem>()==null)new GameObject("UI input",typeof(EventSystem),typeof(InputSystemUIInputModule)).transform.SetParent(transform);
-   var card=Panel(root,new Vector2(30,-28),new Vector2(240,76),Cream);Badge(card,"$",new Vector2(14,-12),Gold,50);money=Label(card,"0",32,new Vector2(77,-12),new Vector2(155,50));
-   card=Panel(root,new Vector2(290,-28),new Vector2(245,76),Cream);Badge(card,"D",new Vector2(14,-12),Sage,50);total=Label(card,"0",30,new Vector2(77,-12),new Vector2(155,50));
-   card=Panel(root,new Vector2(0,-35),new Vector2(300,60),new Color(.3f,.52f,.17f),new Vector2(.5f,1),new Vector2(.5f,1));Label(card,"DUCK PARK / MEADOW",22,new Vector2(10,-8),new Vector2(280,42),TextAnchor.MiddleCenter,Color.white);
-   card=Panel(root,new Vector2(30,38),new Vector2(300,132),Cream,new Vector2(0,0),new Vector2(0,0));Label(card,"CARRYING",15,new Vector2(20,-8),new Vector2(260,25));carry=Label(card,"",35,new Vector2(20,-37),new Vector2(260,48));var track=Panel(card,new Vector2(20,-96),new Vector2(260,16),Sage);bagFill=Panel(track,new Vector2(2,-2),new Vector2(0,12),Gold).GetComponent<Image>();
-   card=Panel(root,new Vector2(-40,68),new Vector2(135,135),Cream,new Vector2(1,0),new Vector2(1,0));card.GetComponent<Image>().sprite=circle;card.GetComponent<Image>().type=Image.Type.Simple;ring=Panel(card,new Vector2(5,-5),new Vector2(125,125),new Color(.43f,.68f,.28f)).GetComponent<Image>();ring.sprite=circle;ring.type=Image.Type.Filled;ring.fillMethod=Image.FillMethod.Radial360;
-   var inner=Panel(card,new Vector2(12,-12),new Vector2(111,111),Cream);inner.GetComponent<Image>().sprite=circle;inner.GetComponent<Image>().type=Image.Type.Simple;percent=Label(inner,"0%",32,Vector2.zero,new Vector2(111,111),TextAnchor.MiddleCenter);
-   left=Label(root,"",15,new Vector2(-25,28),new Vector2(190,32),TextAnchor.MiddleCenter,Ink,new Vector2(1,0),new Vector2(1,0));
-   for(int s=0;s<5;s++){int index=order[s];slots[index]=Button(root,new Vector2(-250+s*103,32),new Vector2(95,104),()=>game.Equip(index),out slotText[index],new Vector2(.5f,0),new Vector2(0,0));slotText[index].fontSize=15;Badge(slots[index].transform,(s+1).ToString(),new Vector2(-4,5),Cream,25);}
-   Button(root,new Vector2(30,-165),new Vector2(215,48),()=>game.SetMenu(true,true),out var open);open.text="TAB  UPGRADES";
-   prompt=Label(root,"",18,new Vector2(0,-120),new Vector2(800,40),TextAnchor.MiddleCenter,Cream,new Vector2(.5f,1),new Vector2(.5f,1));prompt.gameObject.AddComponent<UnityEngine.UI.Outline>().effectColor=Ink;
-   notice=Label(root,"",22,new Vector2(0,-163),new Vector2(800,40),TextAnchor.MiddleCenter,Cream,new Vector2(.5f,1),new Vector2(.5f,1));notice.gameObject.AddComponent<UnityEngine.UI.Outline>().effectColor=Ink;
-   Label(root,"+",23,Vector2.zero,new Vector2(30,30),TextAnchor.MiddleCenter,Cream,new Vector2(.5f,.5f),new Vector2(.5f,.5f));hold=Panel(root,new Vector2(0,-25),new Vector2(0,6),Gold,new Vector2(.5f,.5f),new Vector2(.5f,.5f)).GetComponent<Image>();diagnostics=Label(root,"",14,new Vector2(30,-230),new Vector2(470,90),TextAnchor.UpperLeft,Cream);
-   journal=Panel(root,Vector2.zero,new Vector2(1200,750),Cream,new Vector2(.5f,.5f),new Vector2(.5f,.5f));Label(journal,"Journal",36,new Vector2(35,-25),new Vector2(220,55));
-   string[] tabNames={"UPGRADES","TOOLS","FIELD GUIDE"};for(int i=0;i<3;i++){int tab=i;tabs[i]=Button(journal,new Vector2(265+i*240,-30),new Vector2(220,46),()=>{page=tab;Refresh();},out var label);label.text=tabNames[i];}
-   Button(journal,new Vector2(1115,-28),new Vector2(50,50),()=>game.SetMenu(false),out var close);close.text="X";subtitle=Label(journal,"",18,new Vector2(35,-94),new Vector2(1100,35));
-   for(int i=0;i<5;i++){int row=i;card=Panel(journal,new Vector2(30,-145-i*100),new Vector2(1140,90),i%2==0?Sage:new Color(.94f,.98f,.93f));titles[i]=Label(card,"",21,new Vector2(22,-12),new Vector2(325,60));values[i]=Label(card,"",18,new Vector2(350,-12),new Vector2(395,60));costs[i]=Label(card,"",18,new Vector2(750,-12),new Vector2(115,60));buys[i]=Button(card,new Vector2(885,-15),new Vector2(225,60),()=>Buy(row),out var buy);buy.text="BUY";buys[i].GetComponent<Image>().color=Gold;}
-   Button(journal,new Vector2(35,-680),new Vector2(250,42),()=>{if(reset)game.StartFresh();else{reset=true;subtitle.text="Reset all progress? Click START FRESH again to confirm.";}},out var fresh);fresh.text="START FRESH";
-   Button(journal,new Vector2(825,-680),new Vector2(340,42),()=>game.SetMenu(false),out var back);back.text="BACK TO THE DUCKS";journal.gameObject.SetActive(false);Refresh();
+   game=owner;if(root==null){Debug.LogError("Assign the authored Duck HUD prefab.");enabled=false;return;}Bind();Refresh();
+  }
+  void Bind()
+  {
+   slotColors=new Color[5];slotTextColors=new Color[5];tabColors=new Color[3];
+   for(int i=0;i<5;i++){int index=i;slotColors[i]=slots[i].GetComponent<Image>().color;slotTextColors[i]=slotText[i].color;slots[i].onClick.RemoveAllListeners();slots[i].onClick.AddListener(()=>game.Equip(index));buys[i].onClick.RemoveAllListeners();buys[i].onClick.AddListener(()=>Buy(index));}
+   for(int i=0;i<3;i++){int index=i;tabColors[i]=tabs[i].GetComponent<Image>().color;tabs[i].onClick.RemoveAllListeners();tabs[i].onClick.AddListener(()=>{page=index;Refresh();});}
+   openButton.onClick.RemoveAllListeners();openButton.onClick.AddListener(()=>game.SetMenu(true,true));closeButton.onClick.RemoveAllListeners();closeButton.onClick.AddListener(()=>game.SetMenu(false));backButton.onClick.RemoveAllListeners();backButton.onClick.AddListener(()=>game.SetMenu(false));
+   freshButton.onClick.RemoveAllListeners();freshButton.onClick.AddListener(()=>{if(reset)game.StartFresh();else{reset=true;subtitle.text="Reset all progress? Click START FRESH again to confirm.";}});
   }
   void Buy(int row){if(page==0){if(row<4)game.BuyUpgrade(row);else game.BuyToolUpgrade();}else if(page==1){if(row<4){int i=order[row+1];if(game.Progress.Data.owned[i])game.Equip(i);else game.BuyTool(i);}else game.BuyCasket();}Refresh();}
-  void Update(){hold.rectTransform.sizeDelta=new Vector2(120*game.HoldProgress,6);if(Time.unscaledTime>=next){next=Time.unscaledTime+.1f;Refresh();}}
+  void Update(){if(game==null)return;hold.rectTransform.sizeDelta=new Vector2(120*game.HoldProgress,6);if(Time.unscaledTime>=next){next=Time.unscaledTime+.1f;Refresh();}}
   public void Refresh()
   {
-   if(money==null||game.Progress==null)return;var p=game.Progress;var d=p.Data;money.text=d.money.ToString("N0");total.text=d.deposited.ToString("N0");carry.text=d.carried+" <size=23>/ "+p.Capacity+"</size>";bagFill.rectTransform.sizeDelta=new Vector2(256f*d.carried/p.Capacity,12);ring.fillAmount=(float)d.deposited/d.total;percent.text=(100f*d.deposited/d.total).ToString("F0")+"%";left.text=game.Population.Remaining.ToString("N0")+" ducks left";prompt.text=game.MenuOpen?"":game.Prompt;notice.text=game.MenuOpen?"":game.Notice;
-   for(int i=0;i<5;i++){slots[i].GetComponent<Image>().color=d.currentTool==i?Pink:Cream;slotText[i].color=d.currentTool==i?Color.white:Ink;slotText[i].text=toolNames[i]+(d.owned[i]?"":"\nLOCKED");slots[i].interactable=d.owned[i];}
+   if(game==null||money==null||game.Progress==null)return;var p=game.Progress;var d=p.Data;money.text=d.money.ToString("N0");total.text=d.deposited.ToString("N0");carry.text=d.carried+" <size=23>/ "+p.Capacity+"</size>";bagFill.rectTransform.sizeDelta=new Vector2(256f*d.carried/p.Capacity,12);ring.fillAmount=(float)d.deposited/d.total;percent.text=(100f*d.deposited/d.total).ToString("F0")+"%";left.text=game.Population.Remaining.ToString("N0")+" ducks left";prompt.text=game.MenuOpen?"":game.Prompt;notice.text=game.MenuOpen?"":game.Notice;
+   for(int i=0;i<5;i++){slots[i].GetComponent<Image>().color=d.currentTool==i?selectionColor:slotColors[i];slotText[i].color=d.currentTool==i?Color.white:slotTextColors[i];slotText[i].text=toolNames[i]+(d.owned[i]?"":"\nLOCKED");slots[i].interactable=d.owned[i];}
    diagnostics.gameObject.SetActive(game.Diagnostics);diagnostics.text=(1000/Mathf.Max(1,game.SmoothedFrameMs)).ToString("F0")+" FPS / "+game.Population.VisibleInstances+" visible / "+game.Population.DrawCalls+" batches";journal.gameObject.SetActive(game.MenuOpen);if(!game.MenuOpen){reset=false;return;}
-   for(int i=0;i<3;i++)tabs[i].GetComponent<Image>().color=page==i?Pink:Sage;if(!reset)subtitle.text=d.money.ToString("N0")+" coins / "+p.Equipment.name+" / "+d.casketKits+" casket kits";
+   for(int i=0;i<3;i++)tabs[i].GetComponent<Image>().color=page==i?selectionColor:tabColors[i];if(!reset)subtitle.text=d.money.ToString("N0")+" coins / "+p.Equipment.name+" / "+d.casketKits+" casket kits";
    for(int i=0;i<5;i++)
    {
-    buys[i].gameObject.SetActive(page!=2);buys[i].interactable=false;costs[i].text="";values[i].rectTransform.sizeDelta=new Vector2(page==2?740:395,60);
+    buys[i].gameObject.SetActive(page!=2);costs[i].text="";values[i].rectTransform.sizeDelta=new Vector2(page==2?740:395,60);
     if(page==0&&i<4){var def=game.Settings.upgrades[i];int level=d.levels[i];titles[i].text=new[]{"Pickup Amount","Pickup Speed","Bag Capacity","Walk / Sprint Speed"}[i];string v=i==0?p.PickupAmount+" > "+(p.PickupAmount+1)+" ducks":i==1?p.Interval.ToString("F2")+" > "+(p.Equipment.interval/(1+(level+1)*def.amount)).ToString("F2")+" s":i==2?p.Capacity+" > "+(p.Capacity+(int)def.amount)+" ducks":(game.Settings.walkSpeed*p.MovementMultiplier).ToString("F1")+" > "+(game.Settings.walkSpeed*(1+(level+1)*def.amount)).ToString("F1")+" m/s";values[i].text="Lv "+level+"/"+def.maxLevel+"    "+(level>=def.maxLevel?"MAXED":v);costs[i].text="$ "+def.Cost(level);buys[i].interactable=level<def.maxLevel&&d.money>=def.Cost(level);}
     else if(page==0){titles[i].text="Tool size / speed";values[i].text=p.CanUpgradeTool?p.Equipment.name+" / Lv "+p.ToolLevel+"/6":"Equip a roller or sweeper";costs[i].text="$ "+p.ToolUpgradeCost;buys[i].interactable=p.CanUpgradeTool&&p.ToolLevel<6&&d.money>=p.ToolUpgradeCost;}
     else if(page==1&&i<4){int index=order[i+1];var def=game.Settings.tools[index];titles[i].text=def.name;values[i].text=d.owned[index]?"OWNED / CLICK TO EQUIP":"Shared bag floor: "+def.capacity;costs[i].text=d.owned[index]?"OWNED":"$ "+def.cost;buys[i].interactable=d.owned[index]||d.money>=def.cost;}
@@ -52,11 +41,5 @@ namespace Sandouq.Ducks
     else{titles[i].text=new[]{"Move & explore","Bushes & trees","Lake ducks","Roller collection","Deposit & build"}[i];values[i].text=new[]{"WASD / Shift sprint / Space jump","E breaks bushes or shakes trees","Walk bridges; grab ducks beside them","Hold LMB; release to pull your pile in","E deposits / RMB throws / F installs kits"}[i];}
    }
   }
-  Sprite SpriteShape(bool round,out Texture2D tex){tex=new Texture2D(64,64,TextureFormat.RGBA32,false);tex.wrapMode=TextureWrapMode.Clamp;var colors=new Color[4096];for(int y=0;y<64;y++)for(int x=0;x<64;x++){float dist=round?Vector2.Distance(new Vector2(x+.5f,y+.5f),new Vector2(32,32))-31:Vector2.Distance(new Vector2(x+.5f,y+.5f),new Vector2(Mathf.Clamp(x+.5f,14,50),Mathf.Clamp(y+.5f,14,50)))-14;colors[y*64+x]=new Color(1,1,1,Mathf.Clamp01(.5f-dist));}tex.SetPixels(colors);tex.Apply();return Sprite.Create(tex,new Rect(0,0,64,64),Vector2.one*.5f,100,0,SpriteMeshType.FullRect,new Vector4(16,16,16,16));}
-  RectTransform Panel(Transform parent,Vector2 pos,Vector2 size,Color color,Vector2? anchor=null,Vector2? pivot=null){var go=new GameObject("Card",typeof(RectTransform),typeof(Image));go.transform.SetParent(parent,false);var r=go.GetComponent<RectTransform>();r.anchorMin=r.anchorMax=anchor??new Vector2(0,1);r.pivot=pivot??new Vector2(0,1);r.anchoredPosition=pos;r.sizeDelta=size;var im=go.GetComponent<Image>();im.sprite=rounded;im.type=Image.Type.Sliced;im.color=color;im.raycastTarget=false;var o=go.AddComponent<UnityEngine.UI.Outline>();o.effectColor=Ink;o.effectDistance=new Vector2(2,-2);return r;}
-  Text Label(Transform parent,string text,int size,Vector2 pos,Vector2 dimensions,TextAnchor align=TextAnchor.MiddleLeft,Color? color=null,Vector2? anchor=null,Vector2? pivot=null){var go=new GameObject("Label",typeof(RectTransform),typeof(Text));go.transform.SetParent(parent,false);var r=go.GetComponent<RectTransform>();r.anchorMin=r.anchorMax=anchor??new Vector2(0,1);r.pivot=pivot??new Vector2(0,1);r.anchoredPosition=pos;r.sizeDelta=dimensions;var t=go.GetComponent<Text>();t.font=font;t.fontSize=size;t.fontStyle=FontStyle.Bold;t.color=color??Ink;t.text=text;t.alignment=align;t.raycastTarget=false;return t;}
-  Button Button(Transform parent,Vector2 pos,Vector2 size,UnityEngine.Events.UnityAction action,out Text text,Vector2? anchor=null,Vector2? pivot=null){var r=Panel(parent,pos,size,Sage,anchor,pivot);var im=r.GetComponent<Image>();im.raycastTarget=true;var b=r.gameObject.AddComponent<Button>();b.targetGraphic=im;var c=b.colors;c.highlightedColor=new Color(1,.88f,1);c.disabledColor=new Color(.65f,.69f,.63f);b.colors=c;b.onClick.AddListener(action);text=Label(r,"",18,new Vector2(8,-4),size-new Vector2(16,8),TextAnchor.MiddleCenter);return b;}
-  void Badge(Transform parent,string text,Vector2 pos,Color color,float size){var r=Panel(parent,pos,new Vector2(size,size),color);r.GetComponent<Image>().sprite=circle;r.GetComponent<Image>().type=Image.Type.Simple;Label(r,text,(int)(size*.5f),Vector2.zero,new Vector2(size,size),TextAnchor.MiddleCenter);}
-  void OnDestroy(){if(rounded!=null)Destroy(rounded);if(circle!=null)Destroy(circle);if(texture!=null)Destroy(texture);if(disc!=null)Destroy(disc);}
  }
 }
