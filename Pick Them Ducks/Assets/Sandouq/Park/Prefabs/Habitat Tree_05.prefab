@@ -217,6 +217,59 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2986980612551120325}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5815848708121891979
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3407033649262175071}
+  - component: {fileID: 7068789049800754100}
+  m_Layer: 2
+  m_Name: Interaction collider (edit bounds)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3407033649262175071
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5815848708121891979}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4950340209822333626}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &7068789049800754100
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5815848708121891979}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.1, y: 2.6, z: 1.1}
+  m_Center: {x: 0, y: 1.3, z: 0}
 --- !u!1 &5983624424041458771
 GameObject:
   m_ObjectHideFlags: 0
@@ -409,6 +462,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5658624023464569189, guid: 19b62b92f59219c4ba385a8491763d58, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2986980612551120325}
+    - targetCorrespondingSourceObject: {fileID: 5658624023464569189, guid: 19b62b92f59219c4ba385a8491763d58, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3407033649262175071}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5029579864058409951, guid: 19b62b92f59219c4ba385a8491763d58, type: 3}
       insertIndex: -1
@@ -453,3 +509,4 @@ MonoBehaviour:
   - {fileID: 5976531764065764775}
   - {fileID: 1149044066827129497}
   - {fileID: 2148608043417202200}
+  interactionCollider: {fileID: 7068789049800754100}

@@ -165,6 +165,59 @@ Transform:
   m_Children: []
   m_Father: {fileID: 3802813010740499773}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2505043714846066897
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2420340946717603202}
+  - component: {fileID: 4867394629713859072}
+  m_Layer: 2
+  m_Name: Interaction collider (edit bounds)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2420340946717603202
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2505043714846066897}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6631400145843311400}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &4867394629713859072
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2505043714846066897}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.8, y: 1.4, z: 1.8}
+  m_Center: {x: 0, y: 0.7, z: 0}
 --- !u!1 &2617649511668869050
 GameObject:
   m_ObjectHideFlags: 0
@@ -409,6 +462,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8120876261031782027, guid: b2990b851d883a845b173caa92c063f1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3802813010740499773}
+    - targetCorrespondingSourceObject: {fileID: 8120876261031782027, guid: b2990b851d883a845b173caa92c063f1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2420340946717603202}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 8933159526736329777, guid: b2990b851d883a845b173caa92c063f1, type: 3}
       insertIndex: -1
@@ -448,6 +504,7 @@ MonoBehaviour:
   - {fileID: 7375993829418456257}
   - {fileID: 172468680154293256}
   - {fileID: 5660382764198367135}
+  interactionCollider: {fileID: 4867394629713859072}
 --- !u!4 &6631400145843311400 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8120876261031782027, guid: b2990b851d883a845b173caa92c063f1, type: 3}

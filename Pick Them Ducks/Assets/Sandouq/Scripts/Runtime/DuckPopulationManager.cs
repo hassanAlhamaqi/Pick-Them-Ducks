@@ -145,6 +145,13 @@ namespace Sandouq.Ducks
             var clone = Instantiate(template, parent); clone.name = "Pooled duck visual"; clone.SetActive(false); return clone;
         }
 
+        public void Nearby(Vector3 center,float radius,List<int> result)
+        {
+            result.Clear();float radiusSq=radius*radius;
+            for(int z=Mathf.FloorToInt((center.z-radius)/cellSize);z<=Mathf.FloorToInt((center.z+radius)/cellSize);z++)
+            for(int x=Mathf.FloorToInt((center.x-radius)/cellSize);x<=Mathf.FloorToInt((center.x+radius)/cellSize);x++)
+            {if(!cells.TryGetValue(new Vector2Int(x,z),out var batches))continue;foreach(int batch in batches){var tile=tiles[batch];for(int i=0;i<tile.count;i++){int id=tile.ids[i];if((positions[id]-center).sqrMagnitude<=radiusSq)result.Add(id);}}}
+        }
         public bool Remove(int id)
         {
             if(IsPhysical(id) || IsReserved(id)) { physical.Remove(id); slotOf[id]=-1; Remaining--; removed.Add(id); movedPoses.Remove(id); return true; }

@@ -49,7 +49,9 @@ namespace Sandouq.Ducks
         public float MovementMultiplier=>1+Data.levels[3]*Settings.upgrades[3].amount;
         public int ToolLevel=>Data.toolLevels[Data.currentTool];
         public bool CanUpgradeTool=>Tool==DuckTool.Sweeper||Tool==DuckTool.Collector||Tool==DuckTool.RollerCar;
-        public int ToolUpgradeCost=>Mathf.CeilToInt((Tool==DuckTool.RollerCar?250:75)*Mathf.Pow(1.6f,ToolLevel));
+        public int ToolUpgradeCost=>UpgradeCost(Data.currentTool);
+        public bool CanUpgrade(int index)=>index>=0&&index<Data.owned.Length&&Data.owned[index]&&(index==1||index==3||index==4);
+        public int UpgradeCost(int index)=>index>=0&&index<Data.toolLevels.Length?Mathf.CeilToInt((index==4?250:75)*Mathf.Pow(1.6f,Data.toolLevels[index])):int.MaxValue;
         public float WorkingWidth=>Equipment.range*(1+ToolLevel*.18f);
         public float DriveSpeed=>(Tool==DuckTool.RollerCar?20:8)*(1+ToolLevel*.12f)*MovementMultiplier;
         public bool Complete=>Data.deposited==Data.total;
@@ -92,10 +94,11 @@ namespace Sandouq.Ducks
             var def=Settings.upgrades[index];int level=Data.levels[index];if(level>=def.maxLevel||Data.money<def.Cost(level))return false;
             Data.money-=def.Cost(level);Data.levels[index]++;Touch();return true;
         }
-        public bool BuyToolUpgrade()
+        public bool BuyToolUpgrade()=>BuyToolUpgrade(Data.currentTool);
+        public bool BuyToolUpgrade(int index)
         {
-            if(!CanUpgradeTool||ToolLevel>=6||Data.money<ToolUpgradeCost)return false;
-            Data.money-=ToolUpgradeCost;Data.toolLevels[Data.currentTool]++;Touch();return true;
+            if(!CanUpgrade(index)||Data.toolLevels[index]>=6||Data.money<UpgradeCost(index))return false;
+            Data.money-=UpgradeCost(index);Data.toolLevels[index]++;Touch();return true;
         }
     }
 

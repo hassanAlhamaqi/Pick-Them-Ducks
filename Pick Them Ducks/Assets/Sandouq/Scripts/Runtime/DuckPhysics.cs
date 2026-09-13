@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using DG.Tweening;
 
 namespace Sandouq.Ducks
@@ -32,6 +33,27 @@ namespace Sandouq.Ducks
             free.go.transform.localScale=Vector3.one;free.go.SetActive(true); free.rb.isKinematic=false; free.rb.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
             game.Population.UpdatePose(id,position,free.go.transform.rotation);
             free.rb.linearVelocity=velocity; free.rb.angularVelocity=new Vector3(velocity.z,1,-velocity.x)*3; ActiveCount++; return true;
+        }
+        readonly LinkedList<int> collapsing=new LinkedList<int>();
+        readonly Dictionary<int,LinkedListNode<int>> collapseIds=new Dictionary<int,LinkedListNode<int>>();
+        readonly List<int> nearby=new List<int>();
+        public void CollapsePile(Vector3 center)
+        {
+            if(game.Park.InLake(center)||center.y-game.Park.Ground(center)>2)return;
+            game.Population.Nearby(center,2.6f,nearby);
+            int woken=0;
+            foreach(int id in nearby){var p=game.Population.Position(id);float height=p.y-game.Park.Ground(p);if(height<=.12f||height>=2)continue;
+                if(collapseIds.TryGetValue(id,out var node)){collapsing.Remove(node);collapseIds.Remove(id);}
+                if(woken<4&&ActiveCount<48&&!game.Throwing&&Launch(id,p,new Vector3(Mathf.Sin(id*2.4f),-.3f,Mathf.Cos(id*2.4f))*.45f)){woken++;continue;}
+                collapseIds[id]=collapsing.AddFirst(id);
+            }
+        }
+        void TickCollapse()
+        {
+            for(int n=0;n<12&&collapsing.Count>0&&ActiveCount<32;n++){
+                int id=collapsing.First.Value;collapsing.RemoveFirst();collapseIds.Remove(id);if(!game.Population.IsAvailable(id))continue;
+                var p=game.Population.Position(id);Launch(id,p,new Vector3(Mathf.Sin(id*2.4f),-.3f,Mathf.Cos(id*2.4f))*.45f);
+            }
         }
         public void Release(int id)
         { foreach(var b in pool)if(b.id==id){Disable(b);return;} }
@@ -87,6 +109,7 @@ namespace Sandouq.Ducks
         }
         void FixedUpdate()
         {
+            if(game!=null&&!game.MenuOpen&&!game.Throwing)TickCollapse();
             if(game==null)return;
             var player=game.Player.transform.position; var movement=player-previousPlayer; previousPlayer=player;
             if(!game.MenuOpen && movement.sqrMagnitude>.0001f) Push(player+Vector3.up*.2f,movement.normalized,1.25f,4,2.2f);

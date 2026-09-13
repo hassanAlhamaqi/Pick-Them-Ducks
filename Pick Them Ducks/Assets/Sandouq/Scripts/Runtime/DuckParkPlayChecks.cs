@@ -25,8 +25,9 @@ namespace Sandouq.Ducks
             try
             {
                 Check(game!=null&&game.Deposits!=null,"Updated scene initialization");
-                Check(!game.TickHand(0,true,game.Progress.Interval*.8f)&&game.Progress.Data.carried==0,"Hand must finish its hold");
-                game.TickHand(-1,false,0);Check(!game.TickHand(0,true,game.Progress.Interval*.3f),"Release resets hold");Check(game.TickHand(0,true,game.Progress.Interval)&&game.Progress.Data.carried==1,"Completed hand hold picks up");
+                Check(!game.TickHand(0,false),"Hands require a click");
+                Check(game.TickHand(0,true)&&game.Progress.Data.carried==1,"Click picks up immediately");
+                Check(!game.TickHand(1,true)&&game.PickupCooldownProgress>0,"Cooldown blocks rapid clicks");
                 for(int i=1;i<5;i++)Check(game.CollectId(i),"Fill transfer bag");
                 game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*2);
                 Check(game.Deposit()==5&&game.Progress.Data.money==0&&game.Progress.Data.carried==5,"Deposit begins without instant credit");
@@ -138,7 +139,7 @@ namespace Sandouq.Ducks
             carried=game.Progress.Data.carried;elapsed=0;
             while(elapsed<1){game.TickThrow(true,Time.deltaTime);elapsed+=Time.deltaTime;yield return null;}
             int fastThrow=carried-game.Progress.Data.carried;game.TickThrow(false,0);
-            try{Check(fastThrow>slowThrow*2,"Held throws accelerate");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Polish conservation");}
+            try{Check(fastThrow>slowThrow*2,"Held throws accelerate: "+slowThrow+" -> "+fastThrow);game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Polish conservation");}
             catch(Exception e){Fail(e);yield break;}
             var habitats=game.Park.GetComponentsInChildren<DuckHabitat>();DuckHabitat bush=null,tree=null;foreach(var habitat in habitats){if(habitat.bush&&bush==null)bush=habitat;else if(!habitat.bush&&tree==null)tree=habitat;}
             try{Check(bush!=null&&tree!=null,"Interactive bushes and trees authored");Check(bush.Interact()&&!bush.Interact(),"Bush breaks once");Check(System.Array.IndexOf(game.Progress.Data.brokenBushes,bush.Key)>=0,"Broken bush persists");Check(tree.Interact(),"Tree shake starts");Check(game.Park.terrain.terrainData.detailPrototypes.Length>0,"Dense grass authored");}
@@ -156,9 +157,23 @@ namespace Sandouq.Ducks
             }catch(Exception e){Fail(e);yield break;}
             var landing=game.Park.platforms[0];game.Player.Teleport(landing.transform.position+Vector3.up*1.2f);game.Player.enabled=true;yield return new WaitForSeconds(.6f);game.Player.enabled=false;
             try{Check((game.Player.transform.position-landing.transform.position).sqrMagnitude<4,"Player lands on stepping prefab");}catch(Exception e){Fail(e);yield break;}
-            var water=game.Park.lakeCenter+new Vector3(10,0,10);while(game.Park.WalkableWater(water))water.x+=.3f;water.y=game.Park.waterHeight+.8f;
-            game.Physics.Launch(17001,water,Vector3.down*2);yield return new WaitForSeconds(1.2f);
-            try{Check(!game.Population.IsPhysical(17001)&&Mathf.Abs(game.Population.Position(17001).y-game.Park.waterHeight)<.01f,"Physical duck settles afloat");}catch(Exception e){Fail(e);yield break;}
+            var water=game.Park.lakeCenter+new Vector3(10,0,10);while(game.Park.WalkableWater(water)||game.Park.WalkableWater(water+Vector3.right*.5f)||game.Park.WalkableWater(water-Vector3.right*.5f)||game.Park.WalkableWater(water+Vector3.forward*.5f)||game.Park.WalkableWater(water-Vector3.forward*.5f))water.x+=.3f;water.y=game.Park.waterHeight+.8f;
+            // Reset active bodies before the isolated water assertion: earlier tests deliberately saturate the pool.
+            for(int i=0;i<game.Population.Total;i++)if(game.Population.IsPhysical(i)){game.Physics.Release(i);game.Population.Settle(i,game.Population.Position(i),game.Population.Rotation(i));}
+            int waterId=17000;while(waterId<game.Population.Total&&(!game.Population.IsAvailable(waterId)||game.Population.Position(waterId).y-game.Park.Ground(game.Population.Position(waterId))>.05f))waterId++;
+            try{Check(game.Physics.Launch(waterId,water,Vector3.down*2),"Controlled water launch succeeds");}catch(Exception e){Fail(e);yield break;}yield return new WaitForSeconds(2);
+            try{Check(!game.Population.IsPhysical(waterId)&&Mathf.Abs(game.Population.Position(waterId).y-game.Park.waterHeight)<.01f,"Physical duck settles afloat");}catch(Exception e){Fail(e);yield break;}
+            game.Equip(0);
+            var pile=game.Park.Land(new Vector3(0,0,55));
+            var pileIds=new int[3];int search=19000;
+            for(int n=0;n<3;n++){while(!game.Population.IsAvailable(search)||game.Population.Position(search).y-game.Park.Ground(game.Population.Position(search))>.05f)search++;pileIds[n]=search++;game.Population.Detach(pileIds[n],false);game.Population.Settle(pileIds[n],pile+Vector3.up*(n*.45f),Quaternion.identity);}
+            try{Check(game.TickHand(pileIds[0],true),"Pickup is ready again after cooldown");Check(!game.TickHand(pileIds[1],false),"Holding without a new click cannot collect");}catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(.12f);
+            yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"pickup-cooldown.png"));
+            yield return new WaitForSeconds(.9f);
+            try{Check(game.Population.IsPhysical(pileIds[1])||game.Population.Position(pileIds[1]).y<pile.y+.4f,"Pile loses support after pickup");Check(tree.interactionCollider!=null&&bush.interactionCollider!=null,"Editable interaction colliders assigned");}catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(2);
+            try{Check(game.Population.Position(pileIds[2]).y<pile.y+.6f,"Pile ducks fall down");var image=(UnityEngine.UI.Image)typeof(DuckHUD).GetField("hold",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(game.HUD);Check(image.type==UnityEngine.UI.Image.Type.Filled&&image.fillMethod==UnityEngine.UI.Image.FillMethod.Radial360,"Circular cooldown indicator");}catch(Exception e){Fail(e);yield break;}
             game.Equip(4);
             game.Player.enabled=false;var camera=game.Player.View.transform;camera.position=installed.transform.position+new Vector3(3,2,-4);camera.LookAt(installed.transform.position+Vector3.up*.5f);
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"installed-casket.png"));yield return null;
@@ -178,7 +193,7 @@ namespace Sandouq.Ducks
             catch(Exception e){Fail(e);yield break;}
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"tool-shop.png"));yield return new WaitForSeconds(.5f);
             if(File.Exists(Path.Combine(output,"errors.txt"))){Application.Quit(3);yield break;}
-            File.WriteAllText(Path.Combine(output,"PASS.txt"),"PASS: timed hold/release, incremental arrival credit, in-flight save invariants, per-duck bounce, repeated casket purchases, placement rejection, multiple stations, casket transfers, physical intake, sweeper contact/width, collector contact/speed, roller car capacity/auto-drive and final conservation; jumping/no double jump, shared capacity, four-sided physical intake on both stations, roller bag collection with front visuals and release pull-in, grouped deposits, breakable bushes, tree shaking, dense grass, floating ducks, bridge traversal, deposit and throw acceleration.");Application.Quit(0);
+            File.WriteAllText(Path.Combine(output,"PASS.txt"),"PASS: immediate click pickup and cooldown, incremental arrival credit, in-flight save invariants, per-duck bounce, repeated casket purchases, placement rejection, multiple stations, casket transfers, physical intake, sweeper contact/width, collector contact/speed, roller car capacity/auto-drive and final conservation; jumping/no double jump, shared capacity, four-sided physical intake on both stations, roller bag collection with front visuals and release pull-in, grouped deposits, breakable bushes, tree shaking, dense grass, floating ducks, bridge traversal, deposit and throw acceleration.");Application.Quit(0);
         }
         void Log(string message,string trace,LogType type){if(type==LogType.Error||type==LogType.Exception)File.AppendAllText(Path.Combine(output,"errors.txt"),message+"\n"+trace+"\n");}
     }

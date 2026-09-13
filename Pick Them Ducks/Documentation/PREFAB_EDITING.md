@@ -31,3 +31,15 @@ The old scene, nature, tool and UI generators have been removed. Edit the saved 
 `Lake stepping stone` and `Lake floating timber` are replaceable platform prefabs. Replace their visual child, and keep the root collider plus DuckLakePlatform component. Adjust Footprint and Top Height to match the collider. Scene instances are registered in DuckPark > Platforms; add new platform instances to that list.
 
 UI border colors live on each `Outline > Effect Color`, now #F9C001. Purchase buttons retain their current interactable state between refreshes, so affordable buttons no longer restart their color transition.
+
+
+## Click pickup and interaction bounds
+
+Hands collect on an LMB click. Pickup Speed controls the cooldown between successful clicks; holding the button does not repeat pickup. The circular Image assigned to DuckHUD > Hold displays the remaining cooldown, preserving its authored color. The small central crosshair is a separate hollow-circle Image. UI palette changes preserve existing GameObject active states and component enabled states.
+
+Open a Habitat tree or shrub prefab, select `Interaction collider (edit bounds)`, and use BoxCollider > Edit Collider to adjust its Center and Size. DuckHabitat > Interaction Collider explicitly selects the shape used for both hover and LMB/E interactions; it no longer uses renderer bounds. Interaction Range is the maximum ray reach. Keep the collider a trigger so it does not block movement. Existing physical colliders remain independently editable.
+
+Picking ducks from an elevated ground pile wakes nearby elevated ducks through the bounded physics pool. They tumble down and return to instanced rendering when still.
+
+
+Tool upgrades appear in the purchased tool row on the Tools tab. Sweeper, Collector and Roller Car rows show their own level, cost and UPGRADE/MAXED state. Upgrading a row does not switch the equipped tool. The Upgrades tab contains only the four player upgrades; the shared fifth row is shown for Tools and Field Guide. Existing prefab styling and disabled HUD objects are preserved.

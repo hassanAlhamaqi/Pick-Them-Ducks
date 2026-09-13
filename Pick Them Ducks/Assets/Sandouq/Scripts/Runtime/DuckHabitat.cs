@@ -10,6 +10,7 @@ namespace Sandouq.Ducks
         [Range(1,10)] public int duckCount=10;public float interactionRange=5;public float shakeStrength=4;
         DuckGame game;readonly List<int> ducks=new List<int>();bool broken,shaking;float cooldown;
         public Transform[] spawnPoints=Array.Empty<Transform>();
+        [Tooltip("Dedicated trigger for hover and LMB/E interaction. Edit its collider bounds independently of the visual mesh.")] public Collider interactionCollider;
         public bool Hovered {get;set;}
         MeshFilter[] meshes;Material hoverMaterial;
         public string Key=>"habitat-"+index;
@@ -34,9 +35,10 @@ namespace Sandouq.Ducks
         }
         public bool RayHit(Ray ray,out float distance)
         {
-            distance=float.PositiveInfinity;if(meshes==null)return false;
-            foreach(var mesh in meshes){var renderer=mesh.GetComponent<Renderer>();if(renderer!=null&&renderer.enabled&&renderer.bounds.IntersectRay(ray,out float hit)&&hit<distance)distance=hit;}
-            return distance<=interactionRange;
+            distance=float.PositiveInfinity;
+            if(interactionCollider==null||!interactionCollider.enabled||!interactionCollider.gameObject.activeInHierarchy)return false;
+            if(!interactionCollider.Raycast(ray,out var hit,interactionRange))return false;
+            distance=hit.distance;return true;
         }
         void LateUpdate()
         {

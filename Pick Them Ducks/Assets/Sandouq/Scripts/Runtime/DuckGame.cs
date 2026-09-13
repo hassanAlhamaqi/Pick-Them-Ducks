@@ -26,16 +26,16 @@ namespace Sandouq.Ducks
         public string Prompt {get;private set;}
         public string Notice {get;private set;}
         public float SmoothedFrameMs {get;private set;}
-        public float HoldProgress {get;private set;}
+        public float PickupCooldownProgress => Time.time < nextHandPickup ? Mathf.Clamp01((nextHandPickup-Time.time)/handCooldownDuration) : 0;
         public bool ToolActive {get;private set;}
         public bool Placing {get;private set;}
+        public bool Throwing => throwHeld>0;
         public bool CanDrive=>ToolActive&&!Deposits.Transferring&&Progress.FreeSpace>0&&!Player.Braking&&(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar);
         DuckFeedback feedback;
         DuckHabitat[] habitats;DuckHabitat hoveredHabitat;
         GameObject placementPreview;
         Vector3 previousToolPosition;
-        float nextSave,noticeUntil,nextThrow,throwHeld,nextCollect,holdTime,placementYaw;
-        int heldTarget=-1;
+        float nextSave,noticeUntil,nextThrow,throwHeld,nextCollect,nextHandPickup,handCooldownDuration,placementYaw;
         readonly Collider[] placementHits=new Collider[64];
         MaterialPropertyBlock previewColor;
         void Start()
@@ -71,7 +71,7 @@ namespace Sandouq.Ducks
             if(keys.tabKey.wasPressedThisFrame)SetMenu(!MenuOpen,true);
             if(keys.f3Key.wasPressedThisFrame)Diagnostics=!Diagnostics;
             if(hoveredHabitat!=null){hoveredHabitat.Hovered=false;hoveredHabitat=null;}
-            if(MenuOpen){ToolActive=false;TickHand(-1,false,0);Population.HoverId=-1;return;}
+            if(MenuOpen){ToolActive=false;Population.HoverId=-1;return;}
             if(Cursor.lockState!=CursorLockMode.Locked){if(mouse.leftButton.wasPressedThisFrame)SetMenu(false);return;}
             if(keys.fKey.wasPressedThisFrame){if(Placing)CancelPlacement();else BeginPlacement();}
             if(Placing){UpdatePlacement(mouse,keys);return;}
@@ -90,20 +90,18 @@ namespace Sandouq.Ducks
             bool habitatInput=habitat!=null&&id<0;
             if(habitatInput){hoveredHabitat=habitat;habitat.Hovered=true;if(mouse.leftButton.wasPressedThisFrame)habitat.Interact();ToolActive=false;}
             Population.HoverId=Progress.FreeSpace>0&&(Progress.Tool==DuckTool.Hands||Progress.Tool==DuckTool.Vacuum)?id:-1;
-            Prompt=Deposits.Transferring?"DEPOSITING DUCKS / E STOP / WALK AWAY TO CANCEL":station!=null?"E DEPOSIT / PUSH DUCKS INTO THE INTAKE":shop?"E OPEN TOOL SHOP":habitat!=null?habitat.Hint:Progress.FreeSpace==0&&(Progress.Tool==DuckTool.Hands||Progress.Tool==DuckTool.Vacuum)?"BAG FULL / FIND A DEPOSIT STATION":Progress.Tool==DuckTool.Hands?"HOLD LMB ON A DUCK TO PICK UP":Progress.Tool==DuckTool.Sweeper?"HOLD LMB + WALK TO SWEEP DUCKS":(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar)?"HOLD LMB TO COLLECT / RELEASE TO PULL DUCKS INTO YOUR BAG":"HOLD LMB TO USE / RELEASE TO STOP";
-            if(Progress.Tool==DuckTool.Hands)TickHand(id,ToolActive,Time.deltaTime);
-            else {TickHand(-1,false,0);if(ToolActive&&Progress.Tool==DuckTool.Vacuum&&Time.time>=nextCollect){nextCollect=Time.time+Progress.Interval;CollectAimed();}}
+            Prompt=Deposits.Transferring?"DEPOSITING DUCKS / E STOP / WALK AWAY TO CANCEL":station!=null?"E DEPOSIT / PUSH DUCKS INTO THE INTAKE":shop?"E OPEN TOOL SHOP":habitat!=null?habitat.Hint:Progress.FreeSpace==0&&(Progress.Tool==DuckTool.Hands||Progress.Tool==DuckTool.Vacuum)?"BAG FULL / FIND A DEPOSIT STATION":Progress.Tool==DuckTool.Hands?"CLICK LMB ON A DUCK TO PICK UP":Progress.Tool==DuckTool.Sweeper?"HOLD LMB + WALK TO SWEEP DUCKS":(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar)?"HOLD LMB TO COLLECT / RELEASE TO PULL DUCKS INTO YOUR BAG":"HOLD LMB TO USE / RELEASE TO STOP";
+            if(Progress.Tool==DuckTool.Hands)TickHand(id,ToolActive&&mouse.leftButton.wasPressedThisFrame);
+            else {if(ToolActive&&Progress.Tool==DuckTool.Vacuum&&Time.time>=nextCollect){nextCollect=Time.time+Progress.Interval;CollectAimed();}}
             TickThrow(mouse.rightButton.isPressed,Time.deltaTime);
         }
-        public bool TickHand(int id,bool held,float deltaTime)
+        public bool TickHand(int id,bool clicked)
         {
-            if(!held||id<0||Progress.FreeSpace<=0||Deposits.Transferring){heldTarget=-1;holdTime=HoldProgress=0;return false;}
-            if(id!=heldTarget){heldTarget=id;holdTime=0;}
-            holdTime+=deltaTime;HoldProgress=Mathf.Clamp01(holdTime/Progress.Interval);
-            if(holdTime<Progress.Interval)return false;
+            if(!clicked||id<0||Time.time<nextHandPickup||MenuOpen||Placing||Progress.FreeSpace<=0||Deposits.Transferring)return false;
             Vector3 center=Population.Position(id);int amount=0;
             for(int i=0;i<Progress.PickupAmount;i++){int candidate=i==0?id:Population.Query(center+Vector3.up*1.2f,Vector3.down,2.2f,.1f);if(!CollectId(candidate))break;amount++;}
-            heldTarget=-1;holdTime=HoldProgress=0;return amount>0;
+            if(amount==0)return false;
+            handCooldownDuration=Mathf.Max(.01f,Progress.Interval);nextHandPickup=Time.time+handCooldownDuration;return true;
         }
         void FixedUpdate()
         {
@@ -135,12 +133,12 @@ namespace Sandouq.Ducks
         public bool RecordRollerPickup(int id)
         {
             if((!Population.IsAvailable(id)&&!Population.IsPhysical(id))||!Progress.PickUp())return false;
-            Progress.RecordPickup(id);Population.Remove(id);Progress.Touch();return true;
+            Progress.RecordPickup(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id));Progress.Touch();return true;
         }
         public bool CollectId(int id)
         {
             if(Deposits.Transferring||Placing||(!Population.IsAvailable(id)&&!Population.IsPhysical(id))||!Progress.PickUp())return false;
-            Progress.RecordPickup(id);Physics.Release(id);Population.Remove(id);feedback.Fly(Population.Position(id),Population.Angle(id),Player.CarryTarget);feedback.PickupSound((float)Progress.Data.carried/Progress.Capacity);return true;
+            Progress.RecordPickup(id);Physics.Release(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id));feedback.Fly(Population.Position(id),Population.Angle(id),Player.CarryTarget);feedback.PickupSound((float)Progress.Data.carried/Progress.Capacity);return true;
         }
         public void TickThrow(bool held,float deltaTime)
         {
@@ -206,8 +204,9 @@ namespace Sandouq.Ducks
         public void CancelPlacement(){Placing=false;if(placementPreview!=null)Destroy(placementPreview);}
         public void BuyTool(int i){if(Progress.BuyTool(i)){RefreshTool();Save();}}
         public void BuyUpgrade(int i){if(Progress.BuyUpgrade(i)){RefreshTool();Save();}}
-        public void BuyToolUpgrade(){if(Progress.BuyToolUpgrade()){RefreshTool();Save();}}
-        public void Equip(int i){if(Deposits.Transferring)return;if(Progress.Equip(i)){Physics.FlushFront();ToolActive=false;TickHand(-1,false,0);RefreshTool();Save();}else ShowNotice("Buy this tool at the shop first.");}
+        public void BuyToolUpgrade()=>BuyToolUpgrade(Progress.Data.currentTool);
+        public void BuyToolUpgrade(int index){if(Progress.BuyToolUpgrade(index)){RefreshTool();Save();}}
+        public void Equip(int i){if(Deposits.Transferring)return;if(Progress.Equip(i)){Physics.FlushFront();ToolActive=false;RefreshTool();Save();}else ShowNotice("Buy this tool at the shop first.");}
         void RefreshTool()
         {
             for(int i=0;i<Stage.ToolModels.Length;i++)
@@ -217,7 +216,7 @@ namespace Sandouq.Ducks
             }
             Player.View.transform.localPosition=Vector3.up*(Progress.Tool==DuckTool.RollerCar?2.15f:1.7f);
         }
-        public void SetMenu(bool open,bool shop=false){if(Physics!=null)Physics.FlushFront();throwHeld=0;nextThrow=0;MenuOpen=open;ShopOpen=open&&shop;ToolActive=false;TickHand(-1,false,0);Cursor.lockState=open?CursorLockMode.None:CursorLockMode.Locked;Cursor.visible=open;if(HUD!=null)HUD.Refresh();if(open)Save();}
+        public void SetMenu(bool open,bool shop=false){if(Physics!=null)Physics.FlushFront();throwHeld=0;nextThrow=0;MenuOpen=open;ShopOpen=open&&shop;ToolActive=false;Cursor.lockState=open?CursorLockMode.None:CursorLockMode.Locked;Cursor.visible=open;if(HUD!=null)HUD.Refresh();if(open)Save();}
         public void ShowNotice(string text,float duration=2){Notice=text;noticeUntil=Time.unscaledTime+duration;}
         public bool Save()
         {
