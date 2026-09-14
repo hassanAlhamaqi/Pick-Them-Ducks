@@ -17,6 +17,9 @@ namespace Sandouq.Ducks
         DuckGame game;
         DuckDepositStation transfer;
         float nextFlight,nextScan,burstStart,lastLaunch=-10;
+        [Min(1)] public int ducksPerBatchStep=50;
+        public int BatchSize {get;private set;}=1;
+        public int BatchFor(int held)=>Mathf.Max(1,Mathf.CeilToInt(held/(float)Mathf.Max(1,ducksPerBatchStep)));
         public int InFlight {get;private set;}
         public bool Transferring=>transfer!=null||inventoryReservations.Count>0;
         public void Initialize(DuckGame owner)
@@ -47,6 +50,7 @@ namespace Sandouq.Ducks
         {
             if(Transferring){transfer=null;lastLaunch=-10;return 0;}
             lastLaunch=-10;
+            BatchSize=BatchFor(game.Progress.Data.carried);
             transfer=Nearest(game.Player.transform.position);return transfer==null?0:game.Progress.Data.carried;
         }
         public bool TryIntake(int id,Vector3 from,Vector3 to)
@@ -76,7 +80,7 @@ namespace Sandouq.Ducks
             if(Time.time-lastLaunch>.4f)burstStart=Time.time;
             float acceleration=Mathf.Clamp01((Time.time-burstStart)/3f);
             int launched=0;
-            for(int i=0;i<game.Progress.PickupAmount;i++){if(!LaunchNext(acceleration))break;launched++;}
+            for(int i=0;i<(transfer!=null?BatchSize:1);i++){if(!LaunchNext(acceleration))break;launched++;}
             if(launched>0){nextFlight=Time.time+Mathf.Lerp(game.Settings.depositInterval,.015f,acceleration);lastLaunch=Time.time;}
         }
         bool LaunchNext(float acceleration)

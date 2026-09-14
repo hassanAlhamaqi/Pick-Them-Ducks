@@ -7,8 +7,10 @@ namespace Sandouq.Ducks
     // Only this bounded pool participates in physics. Sleeping ducks return to GPU batches.
     public sealed class DuckPhysics : MonoBehaviour
     {
-        sealed class Body { public GameObject go; public Rigidbody rb; public int id=-1; public float still, age; public bool held, flying, pushing; public int berth,flightBatch; }
+        sealed class Body { public GameObject go; public Rigidbody rb; public int id=-1; public float still, age, groundLinearDamping, groundAngularDamping; public bool held, flying, pushing; public int berth,flightBatch; }
         public GameObject rollingDuckPrefab;
+        [Min(.5f)] public float maximumGroundedRollTime=3f;
+        [Min(0)] public float airborneLinearDamping=.1f,airborneAngularDamping=.3f;
         readonly Body[] pool = new Body[96];
         DuckGame game; Vector3 previousPlayer;
         public int ActiveCount { get; private set; }
@@ -19,7 +21,7 @@ namespace Sandouq.Ducks
             {
                 var root=Instantiate(rollingDuckPrefab,transform);
                 var rb=root.GetComponent<Rigidbody>();rb.isKinematic=true;
-                root.SetActive(false); pool[i]=new Body{go=root,rb=rb};
+                root.SetActive(false); pool[i]=new Body{go=root,rb=rb,groundLinearDamping=rb.linearDamping,groundAngularDamping=rb.angularDamping};
             }
         }
         public bool Launch(int id, Vector3 position, Vector3 velocity, bool fromInventory=false)
@@ -29,7 +31,7 @@ namespace Sandouq.Ducks
             if(!game.Population.Detach(id,fromInventory))return false;
             game.Progress.Touch();
             free.held=free.flying=free.pushing=false; free.id=id; free.age=free.still=0; free.go.transform.SetPositionAndRotation(position+Vector3.up*.23f,game.Population.Rotation(id));
-            free.rb.detectCollisions=true;free.go.transform.localScale=Vector3.one;free.go.SetActive(true); free.rb.isKinematic=false; free.rb.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
+            free.rb.linearDamping=airborneLinearDamping;free.rb.angularDamping=airborneAngularDamping;free.rb.detectCollisions=true;free.go.transform.localScale=Vector3.one;free.go.SetActive(true); free.rb.isKinematic=false; free.rb.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
             game.Population.UpdatePose(id,position,free.go.transform.rotation);
             free.rb.linearVelocity=velocity; free.rb.angularVelocity=new Vector3(velocity.z,1,-velocity.x)*3; ActiveCount++; return true;
         }
@@ -132,21 +134,21 @@ namespace Sandouq.Ducks
             {
                 if(b.id<0||b.flying)continue;
                 if(b.held||b.pushing){if(!game.MenuOpen)MoveCorral(b);}
-                if(b.pushing){var pushedPosition=b.go.transform.position-Vector3.up*.19f;if(game.Deposits.TryIntake(b.id,game.Population.Position(b.id),pushedPosition)){Disable(b);continue;}game.Population.UpdatePose(b.id,pushedPosition,b.go.transform.rotation);continue;}
+                if(b.pushing){var pushedPosition=b.go.transform.TransformPoint(new Vector3(0,-.19f,0));if(game.Deposits.TryIntake(b.id,game.Population.Position(b.id),pushedPosition)){Disable(b);continue;}game.Population.UpdatePose(b.id,pushedPosition,b.go.transform.rotation);continue;}
                 if(b.held||b.flying)continue;
-                b.age+=Time.fixedDeltaTime;
-                var p=b.go.transform.position-Vector3.up*.19f;
+                bool grounded=UnityEngine.Physics.Raycast(b.rb.position,Vector3.down,.27f,~0,QueryTriggerInteraction.Ignore);
+                b.rb.linearDamping=grounded?b.groundLinearDamping:airborneLinearDamping;
+                b.rb.angularDamping=grounded?b.groundAngularDamping:airborneAngularDamping;
+                b.age=grounded?b.age+Time.fixedDeltaTime:0;
+                var p=b.go.transform.TransformPoint(new Vector3(0,-.19f,0));
                 if(game.Deposits!=null && game.Deposits.TryIntake(b.id,game.Population.Position(b.id),p)){Disable(b);continue;}
                 game.Population.UpdatePose(b.id,p,b.go.transform.rotation);
                 if(b.held)continue;
                 if(game.Park.InLake(p)&&p.y<game.Park.waterHeight+.05f){p.y=game.Park.waterHeight;game.particles?.Play(game.particles.waterSplash,p);game.Population.Settle(b.id,p,Quaternion.Euler(0,b.go.transform.eulerAngles.y,0));Disable(b);continue;}
                 b.still=b.rb.linearVelocity.sqrMagnitude<.025f && b.rb.angularVelocity.sqrMagnitude<.08f ? b.still+Time.fixedDeltaTime : 0;
-                if(b.still>.65f || b.rb.IsSleeping() || p.y < -10)
+                if(b.still>.65f || b.rb.IsSleeping() || (grounded&&b.age>=maximumGroundedRollTime) || p.y < -10)
                 {
-                    if(game.Park!=null) {
-                        if(game.Park.InLake(p)&&!game.Park.WalkableWater(p)){p.y=game.Park.waterHeight;b.go.transform.rotation=Quaternion.Euler(0,b.go.transform.eulerAngles.y,0);}
-                        else if(Mathf.Abs(p.x)>145 || p.z< -18 || p.z>280 || p.y<game.Park.Ground(p)-.1f)p=game.Park.Land(p);
-                    }
+                    // Freeze the exact visible pose. Never lift, upright or relocate a settling duck.
                     game.particles?.Play(game.particles.duckSettle,p);game.Population.Settle(b.id,p,b.go.transform.rotation); Disable(b);
                 }
             }

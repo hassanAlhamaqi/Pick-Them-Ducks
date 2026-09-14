@@ -76,3 +76,10 @@ S now brakes forward speed to zero, then accelerates in reverse. W/LMB accelerat
 Pile collapse animates nearby unsupported ducks directly in the instanced population, with gravity and tumbling, so a saturated Rigidbody pool cannot prevent it. Tree-supported ducks stay perched until picked or shaken.
 
 The complete particle creation and assignment list is in `PARTICLE_SYSTEMS_GUIDE.md`. New optional slots are empty; the existing deposit burst is retained. The completion AudioSource is on Duck Game Systems.prefab.
+
+
+## Rolling and bag-scaled deposits
+
+On Rolling Duck.prefab, Rigidbody Linear Damping and Angular Damping are now 2 (ground rolling). DuckPhysics exposes Airborne Linear Damping (0.1) and Airborne Angular Damping (0.3), preserving thrown-duck momentum. DuckPhysics on Duck Game Systems exposes Maximum Grounded Roll Time (3 seconds): grounded ducks return to the instanced population after this limit, even on slopes. Settling preserves the exact rotated visual pivot and rotation, without raising, uprighting, or repositioning the duck. The rolling timer counts grounded time only; airborne time does not consume it.
+
+DuckDeposits on Duck Game Systems exposes Ducks Per Batch Step (50). Starting a bag deposit snapshots the batch size as ceil(initial bag count / step), minimum 1: 1–50 = 1, 100 = 2, 500 = 10, 1000 = 20. That batch stays fixed until the transfer ends or is cancelled; a new transfer takes a new snapshot. Pickup Amount no longer affects deposit batches. Arrival animations, coin credit on landing, and increasing deposit speed remain in place.

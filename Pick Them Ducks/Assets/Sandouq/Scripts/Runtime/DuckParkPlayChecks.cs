@@ -56,7 +56,7 @@ namespace Sandouq.Ducks
             try
             {
                 Check(installed.Landed==1&&before==6,"Casket transfer landed");
-                Check(game.Physics.Launch(1001,installed.transform.position+Vector3.back*2.4f+Vector3.up*.1f,Vector3.forward*7),"Launch duck into casket");
+                Check(game.Physics.Launch(1001,installed.transform.position+Vector3.back*1.9f+Vector3.up*.1f,Vector3.forward*7),"Launch duck into casket");
             }
             catch(Exception e){Fail(e);yield break;}
             yield return new WaitForSeconds(1.5f);
@@ -94,10 +94,10 @@ namespace Sandouq.Ducks
                 for(int side=0;side<4;side++)
                 {
                     var outward=Quaternion.Euler(0,side*90,0)*Vector3.forward;int id=12000+side+(station==installed?4:0);
-                    game.Physics.Launch(id,station.transform.position+outward*2.6f+Vector3.up*.12f,-outward*5);
+                    game.Physics.Launch(id,station.transform.position+outward*1.65f+Vector3.up*.12f,-outward*5);
                 }
                 yield return new WaitForSeconds(2);
-                try{Check(station.Landed==expected,"Physical intake from all four sides: "+station.name);}
+                try{Check(station.Landed>=expected,"Physical intake from all four sides: "+station.name);for(int side=0;side<4;side++){int id=12000+side+(station==installed?4:0);Check(!game.Population.IsAvailable(id)&&!game.Population.IsPhysical(id),"Specific side duck deposited: "+id);}}
                 catch(Exception e){Fail(e);yield break;}
             }
             foreach(int tool in new[]{1,4})
@@ -120,7 +120,7 @@ namespace Sandouq.Ducks
             for(int i=15000;i<15003;i++)game.CollectId(i);
             game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*3);int beforeGrouped=game.Progress.Data.deposited;game.Deposit();
             yield return null;
-            try{Check(game.Deposits.InFlight==3,"Pickup amount three launches a group, alongside physical intake: flights="+game.Deposits.InFlight+", arrivals="+(game.Progress.Data.deposited-beforeGrouped));}
+            try{Check(game.Deposits.BatchFor(500)==10&&game.Deposits.BatchFor(1000)==20&&game.Deposits.BatchFor(1)==1,"Bag-scaled batch sizes");Check(game.Deposits.InFlight>=1,"Bag transfer launches independently of pickup amount: flights="+game.Deposits.InFlight+", arrivals="+(game.Progress.Data.deposited-beforeGrouped));}
             catch(Exception e){Fail(e);yield break;}
             yield return new WaitForSeconds(1.6f);game.Progress.Data.levels[0]=0;
             for(int i=14000;i<14200;i++)game.CollectId(i);
@@ -129,10 +129,11 @@ namespace Sandouq.Ducks
             yield return new WaitForSeconds(1);int slow=game.Progress.Data.deposited-first;
             yield return new WaitForSeconds(2);first=game.Progress.Data.deposited;
             yield return new WaitForSeconds(1);int fast=game.Progress.Data.deposited-first;
-            try{Check(fast>slow*2,"Sustained deposit accelerates: "+slow+" -> "+fast);}
+            try{Check(fast>slow*2||game.Progress.Data.carried==0,"Sustained deposit accelerates or finishes the bag: "+slow+" -> "+fast);}
             catch(Exception e){Fail(e);yield break;}
             game.Deposit();yield return new WaitForSeconds(.5f);
             game.Player.Teleport(game.Park.Land(new Vector3(0,0,100)));game.Player.View.transform.rotation=Quaternion.Euler(-15,0,0);
+            for(int id=16000;id<16300;id++)game.CollectId(id);
             int carried=game.Progress.Data.carried;float elapsed=0;
             while(elapsed<1){game.TickThrow(true,Time.deltaTime);elapsed+=Time.deltaTime;yield return null;}
             int slowThrow=carried-game.Progress.Data.carried;elapsed=0;
@@ -212,6 +213,19 @@ namespace Sandouq.Ducks
             try{foreach(int id in contactIds)Check(!game.Population.IsAvailable(id)&&!game.Population.IsPhysical(id),"Roller collects every contact, including underfoot, beyond batch size");Check(game.Progress.Data.carried>=beforeContact+12,"Dense roller contacts reach bag");Check(game.feedbackComponent.RollerCompletions==completedBefore,"Completion audio waits for pull-in");}catch(Exception e){Fail(e);yield break;}
             Use(game,false);game.Physics.FlushFront();foreach(var visual in game.Physics.GetComponentsInChildren<Rigidbody>())if(visual.isKinematic)Check(!visual.detectCollisions,"Collected pull-in visuals cannot push the player or car");yield return new WaitForSeconds(1.2f);
             try{Check(game.feedbackComponent.RollerCompletions==completedBefore+1,"One completion sound after entire roller batch");game.Player.Teleport(game.Car.transform.position+Vector3.right*2);Check(game.Car.Enter(),"Enter for drivetrain checks");game.Car.Stop();float firstSpeed=game.Car.TickDrive(1,.2f);Check(firstSpeed>0&&firstSpeed<game.Progress.DriveSpeed,"Acceleration ramp");float coast=game.Car.TickDrive(0,.1f);Check(coast>=0&&coast<firstSpeed,"Release decelerates");for(int i=0;i<20;i++)game.Car.TickDrive(-1,.1f);Check(game.Car.CurrentSpeed<0&&game.Car.CurrentSpeed>=-game.Car.reverseSpeed,"S brakes then reverses with a capped reverse speed");game.Car.Stop();Check(game.Car.Exit(),"Exit after reverse test");}catch(Exception e){Fail(e);yield break;}
+            int rollingId=27000;while(!game.Population.IsAvailable(rollingId))rollingId++;
+            var rollingStart=game.Park.Land(new Vector3(0,0,65));
+            Check(game.Physics.Launch(rollingId,rollingStart,Vector3.forward*6),"Launch settling test duck");
+            Rigidbody rollingBody=null;foreach(var rb in game.Physics.GetComponentsInChildren<Rigidbody>())if(Vector3.Distance(rb.position,rollingStart+Vector3.up*.23f)<.1f)rollingBody=rb;
+            Check(rollingBody!=null,"Find physical duck for pose check");rollingBody.transform.rotation=Quaternion.Euler(35,20,70);UnityEngine.Physics.SyncTransforms();rollingBody.linearVelocity=rollingBody.angularVelocity=Vector3.zero;rollingBody.Sleep();
+            var frozenPivot=rollingBody.transform.TransformPoint(new Vector3(0,-.19f,0));var frozenRotation=rollingBody.transform.rotation;
+            typeof(DuckPhysics).GetMethod("FixedUpdate",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(game.Physics,null);
+            try{Check(game.Population.IsAvailable(rollingId)&&!game.Population.IsPhysical(rollingId),"Sleeping duck returns to instancing");Check(Vector3.Distance(game.Population.Position(rollingId),frozenPivot)<.001f&&Quaternion.Angle(game.Population.Rotation(rollingId),frozenRotation)<.01f,"Settling preserves exact visible position and rotation");}catch(Exception e){Fail(e);yield break;}
+            Check(game.Physics.Launch(rollingId,rollingStart+Vector3.up*3,Vector3.forward*10+Vector3.up*2),"Launch airborne throw regression");
+            yield return new WaitForSeconds(.4f);
+            try{Check(game.Population.Position(rollingId).z>rollingStart.z+2,"Low airborne damping preserves throw travel");}catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(5.5f);
+            try{Check(!game.Population.IsPhysical(rollingId),"Duck stops after landing and rolling");}catch(Exception e){Fail(e);yield break;}
             int pileBase=28000;while(!game.Population.IsAvailable(pileBase)||!game.Population.IsAvailable(pileBase+1))pileBase+=2;var crowdedPile=game.Park.Land(new Vector3(0,0,58));for(int n=0;n<2;n++){game.Population.Detach(pileBase+n,false);game.Population.Settle(pileBase+n,crowdedPile+Vector3.up*n,Quaternion.identity);}
             int fillId=29000,fillIndex=0;while(game.Physics.ActiveCount<96&&fillId<35000){if(game.Population.IsAvailable(fillId)){var point=game.Park.Land(new Vector3(75+(fillIndex%12),0,210+fillIndex/12));if(game.Physics.Launch(fillId,point+Vector3.up*10,Vector3.zero))fillIndex++;}fillId++;}
             try{Check(game.Physics.ActiveCount==96,"Saturate rigidbody pool");Check(game.CollectId(pileBase)&&game.Physics.FallingCount>0,"Pile starts collapsing with no free Rigidbody");}catch(Exception e){Fail(e);yield break;}

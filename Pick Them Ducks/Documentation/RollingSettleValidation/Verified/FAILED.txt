@@ -1,0 +1,2 @@
+System.Exception: Physical intake from all four sides: COLLECTION BOX
+  at Sandouq.Ducks.DuckParkPlayChecks+<Start>d__9.MoveNext () [0x01161] in C:\Users\dingk\Documents\Work\Game Development\Sandouq\Projects\Pick-Them-Ducks\Pick Them Ducks\.utmp\ToolValidation\Assets\Sandouq\Scripts\Runtime\DuckParkPlayChecks.cs:100 
