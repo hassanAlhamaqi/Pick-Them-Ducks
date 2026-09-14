@@ -23,7 +23,9 @@ namespace Sandouq.Ducks
             public void Finish() { visual.SetActive(false); }
         }
         Flight[] pool;
-        public AudioSource pickupAudio, depositAudio;
+        public AudioSource pickupAudio, depositAudio,rollerCollectionAudio;
+        public int RollerCompletions {get;private set;}
+        public void RollerFinished(){RollerCompletions++;if(rollerCollectionAudio!=null)rollerCollectionAudio.Play();}
         int cursor;
         float nextSound;
         public void Initialize(DuckPopulationManager population, int size)

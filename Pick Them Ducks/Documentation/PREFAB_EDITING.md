@@ -54,3 +54,25 @@ The Player camera now uses Skybox background instead of Solid Color. Open Window
 UI buttons have DuckUIAnimation: edit Hover Scale, Selected Scale, Pressed Scale and Duration in the prefab inspector. Journal Buy Button is shared by the purchase/upgrade rows. Tweens use unscaled time and only animate selection on a state change. Existing Button colors remain editable.
 
 The remaining duck template normalization and instance batching are rendering preparation for the supplied duck prefab. Fixed pools instantiate reusable visuals; they do not regenerate authored scenery or UI. Benchmark and editor-preview objects remain isolated testing/editor infrastructure.
+
+
+## Rideable roller car and deposit variants
+
+Buying Duck Roller Car delivers one vehicle at the scene's Roller Car Parking marker. E enters/exits nearby; hold W or LMB to drive, A/D steer and S brakes before accelerating in reverse. Mouse input only rotates the seated view. Tool slot 5 enters a nearby car; it does not teleport a distant car. The parked position/yaw are saved, and loading begins outside the vehicle. Edit Duck Roller Vehicle.prefab for the visual, parked collider, steering speed, interaction range and exit offset. DuckGame holds the car prefab and parking-marker references.
+
+Both rollers remain powered at full bag capacity. Extra ducks stay world-owned and are pushed in front, then released when you stop. Collected front visuals are capped separately so they cannot consume every physics slot needed for overflow ducks.
+
+Collection Box and Duck Casket prefabs expose Deposit Effect Prefab, Effect Origin, Effect Duration and On Duck Deposited (duck ID, coin value). Effects play only after a successful landing credit, with a bounded pool per station. The default Duck Deposit Burst prefab is replaceable.
+
+Create a Duck Variant asset with Create > Sandouq > Duck Variant. Set Coin Value and optionally Deposit Effect Prefab. In DuckPrototypeSettings, Default Variant is Rubber Duck (1 coin). Variant Ranges assign a variant to a stable interval of duck IDs: First Duck Id inclusive, Count ducks. First matching range wins. Golden Duck (5 coins) is included as an unassigned example. Assigning a range changes the value of those same IDs even if already carried; pickup, throwing and saving retain their IDs. Variant ranges currently configure reward/effect behavior; they do not replace the duck mesh or appearance. Currency rewards and deposited-duck counts are independent.
+
+
+## Roller reliability, drivetrain and particles
+
+Rollers now collect all contacts each physics step, including underfoot and already-pushed ducks; their mechanical intake is no longer limited by the hand pickup batch/cooldown. Overflow remains world-owned when the shared bag is full. The collected front pile still animates into the bag when collection finishes, then plays one completion sound.
+
+S now brakes forward speed to zero, then accelerates in reverse. W/LMB accelerate forward; releasing controls coasts. Acceleration, Deceleration, Braking and Reverse Speed are editable on DuckRollerVehicle. Steering follows travel direction in reverse.
+
+Pile collapse animates nearby unsupported ducks directly in the instanced population, with gravity and tumbling, so a saturated Rigidbody pool cannot prevent it. Tree-supported ducks stay perched until picked or shaken.
+
+The complete particle creation and assignment list is in `PARTICLE_SYSTEMS_GUIDE.md`. New optional slots are empty; the existing deposit burst is retained. The completion AudioSource is on Duck Game Systems.prefab.

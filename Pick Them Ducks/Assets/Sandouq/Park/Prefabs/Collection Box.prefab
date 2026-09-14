@@ -990,6 +990,12 @@ MonoBehaviour:
   intake:
     m_Center: {x: 0, y: 0.55, z: 0}
     m_Extent: {x: 1.6, y: 0.9, z: 1.6}
+  depositEffectPrefab: {fileID: 4140644070114298735, guid: 0b7f0df06bb71dc43949583a8b64f124, type: 3}
+  effectOrigin: {fileID: 6805281346730740883}
+  effectDuration: 1
+  onDuckDeposited:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &8015688633378982941
 GameObject:
   m_ObjectHideFlags: 0

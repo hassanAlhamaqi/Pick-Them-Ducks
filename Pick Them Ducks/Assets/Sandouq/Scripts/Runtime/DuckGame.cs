@@ -17,6 +17,10 @@ namespace Sandouq.Ducks
         public DuckPhysics physicsComponent;
         public DuckFeedback feedbackComponent;
         public DuckDeposits depositsComponent;
+        public DuckParticleFeedback particles;
+        public DuckRollerVehicle carPrefab;public Transform carSpawnPoint;
+        public DuckRollerVehicle Car {get;private set;}
+        public bool RidingCar=>Car!=null&&Car.Riding;
         public Progression Progress {get;private set;}
         public DuckPopulationManager Population {get;private set;}
         public DuckPhysics Physics {get;private set;}
@@ -34,7 +38,9 @@ namespace Sandouq.Ducks
         public bool ToolActive {get;private set;}
         public bool Placing {get;private set;}
         public bool Throwing => throwHeld>0;
-        public bool CanDrive=>ToolActive&&!Deposits.Transferring&&Progress.FreeSpace>0&&!Player.Braking&&(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar);
+        bool reverseInput,wasBagFull;
+        public float DriveInput=>ToolActive?(reverseInput?-1:1):0;
+        public bool CanDrive=>!Deposits.Transferring&&(RidingCar?(ToolActive||Car.IsMoving):ToolActive&&!Player.Braking&&Progress.Tool==DuckTool.Collector);
         DuckFeedback feedback;
         DuckHabitat[] habitats;DuckHabitat hoveredHabitat;
         GameObject placementPreview;
@@ -60,6 +66,7 @@ namespace Sandouq.Ducks
             Deposits=depositsComponent;Deposits.Initialize(this);
             habitats=Park.GetComponentsInChildren<DuckHabitat>();var moved=new System.Collections.Generic.HashSet<int>();if(data.poses!=null)foreach(var pose in data.poses)moved.Add(pose.id);foreach(var habitat in habitats)habitat.Initialize(this,moved);
             HUD=authoredHUD!=null?authoredHUD:Instantiate(hudPrefab,transform);HUD.Initialize(this);
+            bool wasInCar=data.currentTool==4;EnsureCar();if(wasInCar){Progress.Equip(0);if(Car!=null)Player.Teleport(Park.Land(Car.transform.TransformPoint(Car.exitOffset))+Vector3.up*.05f);}
             RefreshTool();previousToolPosition=Player.transform.position;nextSave=Time.unscaledTime+Settings.autosaveSeconds;
             if(!isolatedTest)SetMenu(Progress.Complete);
         }
@@ -70,6 +77,7 @@ namespace Sandouq.Ducks
             if(Time.unscaledTime>noticeUntil)Notice="";
             if(!isolatedTest&&Progress.Dirty&&Time.unscaledTime>=nextSave)Save();
             if(isolatedTest)return;
+            bool full=Progress.FreeSpace==0;if(full&&!wasBagFull)particles?.Play(particles.bagFull,Player.CarryTarget.position);wasBagFull=full;
             var keys=Keyboard.current;var mouse=Mouse.current;if(keys==null||mouse==null)return;
             if(keys.escapeKey.wasPressedThisFrame){if(Placing)CancelPlacement();else SetMenu(!MenuOpen);}
             if(keys.tabKey.wasPressedThisFrame)SetMenu(!MenuOpen,true);
@@ -87,14 +95,18 @@ namespace Sandouq.Ducks
             var station=Deposits.Nearest(Player.transform.position);
             bool shop=Near(Stage.ShopPosition);
             var habitat=FocusedHabitat();
+            if(keys.eKey.wasPressedThisFrame&&RidingCar){Car.Exit();ToolActive=false;return;}
+            if(keys.eKey.wasPressedThisFrame&&Car!=null&&Car.Nearby&&station==null&&!shop){Car.Enter();ToolActive=false;return;}
             if(keys.eKey.wasPressedThisFrame){if(station!=null)Deposit();else if(shop)SetMenu(true,true);else if(habitat!=null)habitat.Interact();}
-            ToolActive=mouse.leftButton.isPressed&&!Deposits.Transferring;
+            reverseInput=RidingCar&&keys.sKey.isPressed;
+            ToolActive=(mouse.leftButton.isPressed||(RidingCar&&(keys.wKey.isPressed||keys.sKey.isPressed)))&&!Deposits.Transferring;
             var camera=Player.View.transform;
             int id=Population.Query(camera.position,camera.forward,Progress.Range,.4f,.3f);
-            bool habitatInput=habitat!=null&&id<0;
+            bool habitatInput=!RidingCar&&habitat!=null&&id<0;
             if(habitatInput){hoveredHabitat=habitat;habitat.Hovered=true;if(mouse.leftButton.wasPressedThisFrame)habitat.Interact();ToolActive=false;}
             Population.HoverId=Progress.FreeSpace>0&&(Progress.Tool==DuckTool.Hands||Progress.Tool==DuckTool.Vacuum)?id:-1;
             Prompt=Deposits.Transferring?"DEPOSITING DUCKS / E STOP / WALK AWAY TO CANCEL":station!=null?"E DEPOSIT / PUSH DUCKS INTO THE INTAKE":shop?"E OPEN TOOL SHOP":habitat!=null?habitat.Hint:Progress.FreeSpace==0&&(Progress.Tool==DuckTool.Hands||Progress.Tool==DuckTool.Vacuum)?"BAG FULL / FIND A DEPOSIT STATION":Progress.Tool==DuckTool.Hands?"CLICK LMB ON A DUCK TO PICK UP":Progress.Tool==DuckTool.Sweeper?"HOLD LMB + WALK TO SWEEP DUCKS":(Progress.Tool==DuckTool.Collector||Progress.Tool==DuckTool.RollerCar)?"HOLD LMB TO COLLECT / RELEASE TO PULL DUCKS INTO YOUR BAG":"HOLD LMB TO USE / RELEASE TO STOP";
+            if(RidingCar)Prompt="E EXIT / W OR LMB FORWARD / S BRAKE & REVERSE / A D STEER";else if(Car!=null&&Car.Nearby&&station==null&&!shop)Prompt="E RIDE DUCK ROLLER CAR";
             if(Progress.Tool==DuckTool.Hands)TickHand(id,ToolActive&&mouse.leftButton.wasPressedThisFrame);
             else {if(ToolActive&&Progress.Tool==DuckTool.Vacuum&&Time.time>=nextCollect){nextCollect=Time.time+Progress.Interval;CollectAimed();}}
             TickThrow(mouse.rightButton.isPressed,Time.deltaTime);
@@ -111,7 +123,7 @@ namespace Sandouq.Ducks
         {
             if(Deposits==null)return;
             var movement=Player.transform.position-previousToolPosition;previousToolPosition=Player.transform.position;
-            if(MenuOpen||!ToolActive||Placing||Deposits.Transferring||(Progress.Tool==DuckTool.Sweeper&&movement.sqrMagnitude<.0001f))return;
+            if(MenuOpen||(!ToolActive&&!(RidingCar&&Car.IsMoving))||Placing||Deposits.Transferring||(Progress.Tool==DuckTool.Sweeper&&movement.sqrMagnitude<.0001f))return;
             SweepFloor(movement);
         }
         public int SweepFloor(Vector3 movement)
@@ -126,8 +138,11 @@ namespace Sandouq.Ducks
                 Physics.SweepActive(Player.transform,box,velocity);int pushed=0;
                 for(int i=0;i<24;i++){int id=Population.QueryBox(Player.transform,box,false);if(id<0||!Physics.Launch(id,Population.Position(id),velocity+Vector3.up*.15f))break;pushed++;}return pushed;
             }
-            if(Time.time<nextCollect)return 0;nextCollect=Time.time+Progress.Interval;return Physics.CorralRoller(box);
+            var intake=new Bounds(new Vector3(-localMovement.x*.5f,.7f,(reach-.4f-localMovement.z)*.5f),new Vector3(Progress.WorkingWidth+.5f+Mathf.Abs(localMovement.x),3.2f,reach+1.4f+Mathf.Abs(localMovement.z)));
+            int collected=Physics.CorralRoller(intake);if(Progress.FreeSpace==0)Physics.PushRoller(intake);return collected;
         }
+        public void ResetToolSweep(){previousToolPosition=Player.transform.position;}
+        public void RollerCollectionFinished(int count){if(count<=0)return;feedback.RollerFinished();particles?.Play(particles.rollerComplete,Player.CarryTarget.position);}
         public int CollectAimed()
         {
             if(Progress.Tool!=DuckTool.Vacuum||Deposits.Transferring)return 0;
@@ -142,7 +157,7 @@ namespace Sandouq.Ducks
         public bool CollectId(int id)
         {
             if(Deposits.Transferring||Placing||(!Population.IsAvailable(id)&&!Population.IsPhysical(id))||!Progress.PickUp())return false;
-            Progress.RecordPickup(id);Physics.Release(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id));feedback.Fly(Population.Position(id),Population.Angle(id),Player.CarryTarget);feedback.PickupSound((float)Progress.Data.carried/Progress.Capacity);return true;
+            particles?.Play(particles.pickup,Population.Position(id));Progress.RecordPickup(id);Physics.Release(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id));feedback.Fly(Population.Position(id),Population.Angle(id),Player.CarryTarget);feedback.PickupSound((float)Progress.Data.carried/Progress.Capacity);return true;
         }
         public void TickThrow(bool held,float deltaTime)
         {
@@ -155,7 +170,7 @@ namespace Sandouq.Ducks
             Physics.FlushFront();
             int id=Progress.ThrowId;if(id<0||Placing||Deposits.Transferring)return false;var camera=Player.View.transform;
             Physics.Release(id);
-            if(!Physics.Launch(id,camera.position+camera.forward*.7f,camera.forward*8+Vector3.up*2,true))return false;Progress.Thrown();return true;
+            if(!Physics.Launch(id,camera.position+camera.forward*.7f,camera.forward*8+Vector3.up*2,true))return false;Progress.Thrown();particles?.Play(particles.duckThrow,camera.position+camera.forward*.7f);return true;
         }
         public int Deposit(){Physics.FlushFront();ToolActive=false;bool stopping=Deposits.Transferring;int amount=Deposits.Begin();ShowNotice(stopping?"Stopping after ducks in flight land.":amount>0?"Depositing one duck at a time...":"Bring ducks to a deposit station.");return amount;}
         public void DepositLanded(){feedback.DepositSound(1);if(Progress.Complete){Save();SetMenu(true);ShowNotice("EVERY DUCK DEPOSITED!",60);}}
@@ -171,6 +186,7 @@ namespace Sandouq.Ducks
         public void BuyCasket(){if(Progress.BuyCasket()){Save();ShowNotice("Duck Casket kit purchased. F to install.");}}
         public void BeginPlacement()
         {
+            if(RidingCar){ShowNotice("Step out of the car to install a casket.");return;}
             if(Progress.Data.casketKits==0||Deposits.Transferring){ShowNotice("Buy a Duck Casket kit at the shop first.");return;}
             Placing=true;throwHeld=0;nextThrow=0;ToolActive=false;placementYaw=Player.transform.eulerAngles.y;
             placementPreview=Instantiate(Park.casketPrefab);placementPreview.name="Duck Casket placement preview";placementPreview.SetActive(true);
@@ -188,7 +204,8 @@ namespace Sandouq.Ducks
         }
         public bool InstallCasket(Vector3 p,float yaw)
         {
-            if(!CanInstall(p,yaw)||!Progress.InstallCasket(p,yaw))return false;
+            if(!CanInstall(p,yaw)||!Progress.InstallCasket(p,yaw)){particles?.Play(particles.placementBlocked,p);return false;}
+            particles?.Play(particles.casketPlaced,p);
             Deposits.AddStation(new CasketPlacement{position=p,yaw=yaw});CancelPlacement();Save();ShowNotice("Duck Casket installed. Push ducks in or press E to deposit.");return true;
         }
         void UpdatePlacement(Mouse mouse,Keyboard keys)
@@ -197,7 +214,7 @@ namespace Sandouq.Ducks
             var p=Park.Land(Player.transform.position+Player.transform.forward*3.5f);bool valid=CanInstall(p,placementYaw);
             PreviewPlacement(p,placementYaw);
             Prompt=valid?"LMB INSTALL DUCK CASKET / R ROTATE / RMB CANCEL":"BLOCKED OR TOO STEEP / MOVE TO CLEAR GROUND / RMB CANCEL";
-            if(mouse.rightButton.wasPressedThisFrame)CancelPlacement();else if(mouse.leftButton.wasPressedThisFrame&&valid)InstallCasket(p,placementYaw);
+            if(mouse.rightButton.wasPressedThisFrame)CancelPlacement();else if(mouse.leftButton.wasPressedThisFrame){if(valid)InstallCasket(p,placementYaw);else particles?.Play(particles.placementBlocked,p);}
         }
         public void PreviewPlacement(Vector3 p,float yaw)
         {
@@ -206,25 +223,28 @@ namespace Sandouq.Ducks
             foreach(var renderer in placementPreview.GetComponentsInChildren<Renderer>())renderer.SetPropertyBlock(previewColor);
         }
         public void CancelPlacement(){Placing=false;if(placementPreview!=null)Destroy(placementPreview);}
-        public void BuyTool(int i){if(Progress.BuyTool(i)){RefreshTool();Save();}}
+        public void BuyTool(int i){int before=Progress.Data.currentTool;if(Progress.BuyTool(i)){if(i==4){Progress.Equip(before);EnsureCar();ShowNotice("Roller car delivered near the shop. Walk up and press E to ride.");}else if(RidingCar)Progress.Equip(before);RefreshTool();Save();}}
         public void BuyUpgrade(int i){if(Progress.BuyUpgrade(i)){RefreshTool();Save();}}
         public void BuyToolUpgrade()=>BuyToolUpgrade(Progress.Data.currentTool);
         public void BuyToolUpgrade(int index){if(Progress.BuyToolUpgrade(index)){RefreshTool();Save();}}
-        public void Equip(int i){if(Deposits.Transferring)return;if(Progress.Equip(i)){Physics.FlushFront();ToolActive=false;RefreshTool();Save();}else ShowNotice("Buy this tool at the shop first.");}
-        void RefreshTool()
+        public void Equip(int i){if(Deposits.Transferring)return;if(i==4){EnsureCar();if(Car==null||!Car.Enter())ShowNotice(RidingCar?"Already riding. E to exit.":"Walk to your roller car and press E to ride.");return;}if(RidingCar&&!Car.Exit())return;if(Progress.Equip(i)){Physics.FlushFront();ToolActive=false;RefreshTool();Save();}else ShowNotice("Buy this tool at the shop first.");}
+        void EnsureCar(){if(Car!=null||!Progress.Data.owned[4]||carPrefab==null)return;Car=Instantiate(carPrefab);var d=Progress.Data;var p=d.hasCarPose?d.carPosition:carSpawnPoint.position;Car.transform.SetPositionAndRotation(p,Quaternion.Euler(0,d.hasCarPose?d.carYaw:carSpawnPoint.eulerAngles.y,0));Car.Initialize(this);}
+        public void RefreshTool()
         {
             for(int i=0;i<Stage.ToolModels.Length;i++)
             {
-                var model=Stage.ToolModels[i];model.gameObject.SetActive(i==Progress.Data.currentTool);
+                var model=Stage.ToolModels[i];model.gameObject.SetActive(i==Progress.Data.currentTool&&i!=4);
                 if(i==1||i==3||i==4)model.localScale=new Vector3(1+Progress.Data.toolLevels[i]*.18f,1,1);
             }
-            Player.View.transform.localPosition=Vector3.up*(Progress.Tool==DuckTool.RollerCar?2.15f:1.7f);
+            if(Car!=null)Car.UpdateSize();
+            Player.View.transform.localPosition=Vector3.up*(RidingCar?2.15f:1.7f);
         }
-        public void SetMenu(bool open,bool shop=false){if(Physics!=null)Physics.FlushFront();throwHeld=0;nextThrow=0;MenuOpen=open;ShopOpen=open&&shop;ToolActive=false;Cursor.lockState=open?CursorLockMode.None:CursorLockMode.Locked;Cursor.visible=open;if(HUD!=null)HUD.Refresh();if(open)Save();}
+        public void SetMenu(bool open,bool shop=false){if(Physics!=null)Physics.FlushFront();throwHeld=0;nextThrow=0;MenuOpen=open;ShopOpen=open&&shop;ToolActive=false;if(open&&Car!=null)Car.Stop();Cursor.lockState=open?CursorLockMode.None:CursorLockMode.Locked;Cursor.visible=open;if(HUD!=null)HUD.Refresh();if(open)Save();}
         public void ShowNotice(string text,float duration=2){Notice=text;noticeUntil=Time.unscaledTime+duration;}
         public bool Save()
         {
             if(Progress==null||Population==null||Player==null||isolatedTest)return false;
+            if(Car!=null){Car.Follow();Progress.Data.hasCarPose=true;Progress.Data.carPosition=Car.transform.position;Progress.Data.carYaw=Car.transform.eulerAngles.y;}
             Progress.Data.collected=Population.CollectedIds();Progress.Data.poses=Population.Poses();Progress.Data.hasPlayerPose=true;Progress.Data.playerPosition=Player.transform.position;Progress.Data.playerYaw=Player.transform.eulerAngles.y;
             bool ok=DuckSaveSystem.Save(Progress.Data);if(ok)Progress.MarkSaved();else ShowNotice("SAVE FAILED: "+DuckSaveSystem.LastError,15);nextSave=Time.unscaledTime+Settings.autosaveSeconds;return ok;
         }

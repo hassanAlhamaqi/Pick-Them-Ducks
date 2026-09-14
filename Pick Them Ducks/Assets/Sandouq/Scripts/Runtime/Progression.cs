@@ -18,6 +18,7 @@ namespace Sandouq.Ducks
         public CasketPlacement[] stations=Array.Empty<CasketPlacement>();
         public DuckPose[] poses=Array.Empty<DuckPose>();
         public bool hasPlayerPose;
+        public bool hasCarPose;public Vector3 carPosition;public float carYaw;
         public Vector3 playerPosition;
         public float playerYaw;
         // Retained only to migrate the old portable container. Contents drain visibly on load.
@@ -64,14 +65,14 @@ namespace Sandouq.Ducks
         public bool DepositInventory(int id)
         {
             int at=Array.IndexOf(Data.inventory,id);if(at<0)return false;
-            var ids=new List<int>(Data.inventory);ids.RemoveAt(at);Data.inventory=ids.ToArray();Data.carried--;Credit();return true;
+            var ids=new List<int>(Data.inventory);ids.RemoveAt(at);Data.inventory=ids.ToArray();Data.carried--;Credit(id);return true;
         }
         public bool DepositLegacy(int id)
         {
             int at=Array.IndexOf(Data.casketDucks,id);if(at<0)return false;
-            var ids=new List<int>(Data.casketDucks);ids.RemoveAt(at);Data.casketDucks=ids.ToArray();Credit();return true;
+            var ids=new List<int>(Data.casketDucks);ids.RemoveAt(at);Data.casketDucks=ids.ToArray();Credit(id);return true;
         }
-        public void Credit(){Data.deposited++;Data.money+=Settings.moneyPerDuck;Touch();}
+        public void Credit(int id=-1){Data.deposited++;Data.money=(int)Math.Min(int.MaxValue,(long)Data.money+Settings.ValueFor(id));Touch();}
         public bool BuyCasket(){if(Data.money<Settings.casketCost)return false;Data.money-=Settings.casketCost;Data.casketKits++;Touch();return true;}
         public bool InstallCasket(Vector3 position,float yaw)
         {
@@ -138,6 +139,7 @@ namespace Sandouq.Ducks
             if((long)d.carried+d.deposited+d.casketDucks.Length!=d.collected.Length||d.inventory.Length!=d.carried||d.collected.Length>d.total||d.carried>Progression.SharedBaseCapacity(d,settings)+d.levels[2]*settings.upgrades[2].amount)return false;
             for(int i=0;i<4;i++)if(d.levels[i]<0||d.levels[i]>settings.upgrades[i].maxLevel)return false;
             foreach(int level in d.toolLevels)if(level<0||level>6)return false;
+            if(d.hasCarPose&&(!Finite(d.carPosition)||!float.IsFinite(d.carYaw)))return false;
             if(d.hasPlayerPose&&(!Finite(d.playerPosition)||!float.IsFinite(d.playerYaw)))return false;
             foreach(var station in d.stations)if(!Finite(station.position)||!float.IsFinite(station.yaw))return false;
             var seen=new HashSet<int>();foreach(int id in d.collected)if(id<0||id>=d.total||!seen.Add(id))return false;

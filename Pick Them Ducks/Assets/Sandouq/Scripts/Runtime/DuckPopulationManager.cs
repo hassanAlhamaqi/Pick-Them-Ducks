@@ -35,6 +35,8 @@ namespace Sandouq.Ducks
         Camera view;
         int columns, rows, cellWidth;
         float spacing, minX;
+        public readonly HashSet<int> supportedDucks=new HashSet<int>();
+        public void MoveInstance(int id,Vector3 p,Quaternion rotation){if(!IsAvailable(id))return;Detach(id,false);Settle(id,p,rotation);}
         public int HoverId { get; set; } = -1;
         public int Remaining { get; private set; }
         public int Total => positions.Length;
@@ -154,6 +156,7 @@ namespace Sandouq.Ducks
         }
         public bool Remove(int id)
         {
+            supportedDucks.Remove(id);
             if(IsPhysical(id) || IsReserved(id)) { physical.Remove(id); slotOf[id]=-1; Remaining--; removed.Add(id); movedPoses.Remove(id); return true; }
             if (!IsAvailable(id)) return false;
             var tile = tiles[tileOf[id]]; int slot = slotOf[id], last = --tile.count;

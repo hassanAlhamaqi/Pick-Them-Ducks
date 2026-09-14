@@ -43,7 +43,12 @@ namespace Sandouq.Ducks
         [Min(.5f)] public float spacing = 1.2f;
         [Min(2)] public int cellWidth = 16;
         [Min(1)] public int moneyPerDuck = 1;
-        [Header("Equipment — enum order: Hands, Collector, Vacuum, Sweeper, RollerCar")]
+        [Header("Duck values: stable ID ranges preserve identity through pickup and throwing")]
+        public DuckVariant defaultVariant;
+        public DuckVariantRange[] variantRanges=Array.Empty<DuckVariantRange>();
+        public DuckVariant VariantFor(int id){foreach(var range in variantRanges)if(id>=range.firstDuckId&&(long)id<((long)range.firstDuckId+range.count)&&range.variant!=null)return range.variant;return defaultVariant;}
+        public int ValueFor(int id){var variant=VariantFor(id);return Mathf.Max(1,variant!=null?variant.coinValue:moneyPerDuck);}
+        [Header("Equipment â€” enum order: Hands, Collector, Vacuum, Sweeper, RollerCar")]
         public ToolDefinition[] tools = {
             new ToolDefinition("Hands",0,10,2.8f,.65f,1),
             new ToolDefinition("Duck Collector",120,45,1.4f,.16f,3),
@@ -51,7 +56,7 @@ namespace Sandouq.Ducks
             new ToolDefinition("Duck Sweeper",50,120,2.4f,.08f,1),
             new ToolDefinition("Duck Roller Car",2000,600,3.5f,.12f,10)
         };
-        [Header("Upgrades: pickup amount, hold speed, bag capacity, movement")]
+        [Header("Upgrades: pickup amount, pickup cooldown, bag capacity, movement")]
         public UpgradeDefinition[] upgrades = {
             new UpgradeDefinition("Pickup Amount +1",30,1),
             new UpgradeDefinition("Pickup Speed +20%",40,.2f),

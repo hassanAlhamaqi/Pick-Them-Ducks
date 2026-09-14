@@ -113,8 +113,8 @@ namespace Sandouq.Ducks
             bool credited=false;var r=f.request;
             if(r.kind==0){inventoryReservations.Remove(r.id);credited=game.Progress.DepositInventory(r.id);}
             else if(r.kind==2){legacyReservations.Remove(r.id);credited=game.Progress.DepositLegacy(r.id);}
-            else if(game.Population.Remove(r.id)){game.Progress.Credit();credited=true;}
-            if(credited){r.station.Arrived();game.DepositLanded();}
+            else if(game.Population.Remove(r.id)){game.Progress.Credit(r.id);credited=true;}
+            if(credited){r.station.Arrived(r.id,game.Settings.ValueFor(r.id),game.Settings.VariantFor(r.id));game.DepositLanded();}
             f.active=false;InFlight--;f.visual.SetActive(false);
         }
         void OnDestroy(){foreach(var f in flights)f?.tween?.Kill();}

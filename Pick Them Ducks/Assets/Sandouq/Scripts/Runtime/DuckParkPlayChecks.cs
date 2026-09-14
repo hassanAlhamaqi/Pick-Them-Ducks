@@ -70,12 +70,12 @@ namespace Sandouq.Ducks
                 game.BuyTool(1);float speed=game.Progress.DriveSpeed;game.BuyToolUpgrade();Check(game.Progress.DriveSpeed>speed,"Collector grows faster");
                 game.Population.Detach(3000,false);game.Population.Settle(3000,game.Park.Land(game.Player.transform.position+Vector3.forward*1.5f),Quaternion.identity);
                 Check(game.SweepFloor(Vector3.forward*.2f)>0,"Roller pushes floor contact");
-                game.BuyTool(4);Check(game.Progress.Capacity>=600,"Roller car biggest bag");
+                game.BuyTool(4);Check(game.Progress.Capacity>=600&&game.Car!=null&&!game.RidingCar,"Car purchase delivers a parked field vehicle");game.Player.Teleport(game.Car.transform.position+Vector3.right*2);Check(game.Car.Enter(),"Enter the nearby car");
                 game.Player.Teleport(game.Park.Land(new Vector3(0,0,70))+Vector3.up*.05f);game.SetMenu(false);Use(game,true);
             }
             catch(Exception e){Fail(e);yield break;}
             Vector3 start=game.Player.transform.position;yield return new WaitForSeconds(.3f);Use(game,false);
-            try{Check((game.Player.transform.position-start).magnitude>1,"Vehicle auto-forward movement");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Final conservation");}
+            try{Check((game.Player.transform.position-start).magnitude>.15f&&game.Car.CurrentSpeed<game.Progress.DriveSpeed,"Vehicle accelerates into forward movement");game.Progress.Data.collected=game.Population.CollectedIds();game.Progress.Data.poses=game.Population.Poses();Check(DuckSaveSystem.Valid(game.Progress.Data,game.Settings),"Final conservation");}
             catch(Exception e){Fail(e);yield break;}
             // Exercise the polished mechanics with real physics and arrival callbacks.
             game.Equip(0);game.Player.Teleport(game.Park.Land(new Vector3(0,0,70))+Vector3.up*.02f);
@@ -102,7 +102,7 @@ namespace Sandouq.Ducks
             }
             foreach(int tool in new[]{1,4})
             {
-                game.Equip(tool);game.Player.Teleport(game.Park.Land(new Vector3(0,0,70)));game.Player.transform.rotation=Quaternion.identity;
+                if(tool==4){game.Player.Teleport(game.Car.transform.position+Vector3.right*2);Check(game.Car.Enter(),"Re-enter parked car");}else game.Equip(tool);game.Player.Teleport(game.Park.Land(new Vector3(0,0,70)));game.Player.transform.rotation=Quaternion.identity;
                 int duck=13000+tool;float reach=tool==4?2.3f:1.7f;
                 game.Population.Detach(duck,false);game.Population.Settle(duck,game.Player.transform.position+new Vector3(.3f,.03f,reach),Quaternion.identity);
                 int bagBefore=game.Progress.Data.carried;Use(game,true);game.SweepFloor(Vector3.forward*.2f);
@@ -116,10 +116,11 @@ namespace Sandouq.Ducks
             }
             game.Equip(0);
             game.Progress.Data.levels[0]=2;
+            if(game.RidingCar){game.Player.Teleport(game.Park.Land(new Vector3(0,0,70)));Check(game.Car.Exit(),"Leave car in the field");}game.Equip(0);
             for(int i=15000;i<15003;i++)game.CollectId(i);
-            game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*3);game.Deposit();
+            game.Player.Teleport(game.Stage.BoxPosition+Vector3.back*3);int beforeGrouped=game.Progress.Data.deposited;game.Deposit();
             yield return null;
-            try{Check(game.Deposits.InFlight==3,"Pickup amount three launches three simultaneous ducks");}
+            try{Check(game.Deposits.InFlight==3,"Pickup amount three launches a group, alongside physical intake: flights="+game.Deposits.InFlight+", arrivals="+(game.Progress.Data.deposited-beforeGrouped));}
             catch(Exception e){Fail(e);yield break;}
             yield return new WaitForSeconds(1.6f);game.Progress.Data.levels[0]=0;
             for(int i=14000;i<14200;i++)game.CollectId(i);
@@ -128,7 +129,7 @@ namespace Sandouq.Ducks
             yield return new WaitForSeconds(1);int slow=game.Progress.Data.deposited-first;
             yield return new WaitForSeconds(2);first=game.Progress.Data.deposited;
             yield return new WaitForSeconds(1);int fast=game.Progress.Data.deposited-first;
-            try{Check(fast>slow*2,"Sustained deposit accelerates");}
+            try{Check(fast>slow*2,"Sustained deposit accelerates: "+slow+" -> "+fast);}
             catch(Exception e){Fail(e);yield break;}
             game.Deposit();yield return new WaitForSeconds(.5f);
             game.Player.Teleport(game.Park.Land(new Vector3(0,0,100)));game.Player.View.transform.rotation=Quaternion.Euler(-15,0,0);
@@ -188,6 +189,34 @@ namespace Sandouq.Ducks
             yield return null;yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"lake-bridges.png"));yield return null;
             camera.position=game.Park.Land(new Vector3(12,0,24))+Vector3.up*1.7f;camera.rotation=Quaternion.Euler(28,50,0);
             yield return new WaitForSeconds(.25f);yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"dense-grass.png"));yield return null;
+            foreach(int roller in new[]{1,4}){
+            if(roller==4){game.Player.Teleport(game.Car.transform.position+Vector3.right*2);Check(game.Car.Enter(),"Enter for full car test");}else game.Equip(1);
+            game.Player.Teleport(game.Park.Land(new Vector3(0,0,45)));game.Player.transform.rotation=Quaternion.identity;
+            int overflowId=22000;while(!game.Population.IsAvailable(overflowId))overflowId++;
+            game.Physics.Release(overflowId);game.Population.Detach(overflowId,false);game.Population.Settle(overflowId,game.Player.transform.position+new Vector3(0,.03f,roller==4?2.3f:1.7f),Quaternion.identity);
+            int oldCarried=game.Progress.Data.carried;game.Progress.Data.carried=game.Progress.Capacity;Use(game,true);game.SweepFloor(Vector3.forward*.1f);yield return new WaitForSeconds(.15f);
+            try{Check(game.CanDrive&&game.Progress.Data.carried==game.Progress.Capacity&&game.Population.IsPhysical(overflowId)&&game.Physics.PushedCount>0,"Full roller still drives and pushes uncollected overflow: "+roller);}catch(Exception e){Fail(e);yield break;}
+            Use(game,false);game.Physics.FlushFront();game.Progress.Data.carried=oldCarried;if(game.RidingCar)Check(game.Car.Exit(),"Exit full-bag test car");
+            }
+            game.Player.Teleport(game.Car.transform.position+Vector3.right*2);
+            try{Check(game.Car.Enter(),"Ride car for steering checks");float yaw=game.Player.transform.eulerAngles.y;game.Player.ApplyLook(new Vector2(35,0));Check(Mathf.Abs(Mathf.DeltaAngle(yaw,game.Player.transform.eulerAngles.y))<.01f,"Mouse look does not steer car");Use(game,true);game.Car.TickDrive(1,.6f);game.Player.SteerCar(1,.3f);Check(Mathf.Abs(Mathf.DeltaAngle(yaw,game.Player.transform.eulerAngles.y))>10,"Car steering changes heading");Use(game,false);Check(game.Car.Exit(),"Exit car safely");Check(!game.RidingCar&&game.Car.parkedCollider.enabled,"Car remains parked with collision");}catch(Exception e){Fail(e);yield break;}
+            camera.position=game.Car.transform.position+new Vector3(4,3,-6);camera.LookAt(game.Car.transform.position+Vector3.up);
+            yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"parked-roller-car.png"));yield return null;
+            var effectStation=game.Deposits.Stations[0];int eventValue=0;effectStation.onDuckDeposited.AddListener((id,value)=>eventValue=value);effectStation.Arrived(12345,5);
+            try{Check(effectStation.LastDuckValue==5&&eventValue==5&&effectStation.depositEffectPrefab!=null,"Deposit effect event exposes variant value");}catch(Exception e){Fail(e);yield break;}
+            camera.position=effectStation.transform.position+new Vector3(3,2,-4);camera.LookAt(effectStation.landing.position);
+            yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,"deposit-effect.png"));yield return null;
+            game.Equip(1);game.Player.Teleport(game.Park.Land(new Vector3(0,0,55)));game.Player.transform.rotation=Quaternion.identity;
+            var contactIds=new int[12];int searchContact=25000;for(int n=0;n<contactIds.Length;n++){while(!game.Population.IsAvailable(searchContact))searchContact++;int id=contactIds[n]=searchContact++;game.Population.Detach(id,false);game.Population.Settle(id,game.Player.transform.position+new Vector3((n%3-1)*.25f,.03f,n<6?0:1.5f),Quaternion.identity);}
+            int beforeContact=game.Progress.Data.carried,completedBefore=game.feedbackComponent.RollerCompletions;Use(game,true);game.SweepFloor(Vector3.forward*.5f);
+            try{foreach(int id in contactIds)Check(!game.Population.IsAvailable(id)&&!game.Population.IsPhysical(id),"Roller collects every contact, including underfoot, beyond batch size");Check(game.Progress.Data.carried>=beforeContact+12,"Dense roller contacts reach bag");Check(game.feedbackComponent.RollerCompletions==completedBefore,"Completion audio waits for pull-in");}catch(Exception e){Fail(e);yield break;}
+            Use(game,false);game.Physics.FlushFront();foreach(var visual in game.Physics.GetComponentsInChildren<Rigidbody>())if(visual.isKinematic)Check(!visual.detectCollisions,"Collected pull-in visuals cannot push the player or car");yield return new WaitForSeconds(1.2f);
+            try{Check(game.feedbackComponent.RollerCompletions==completedBefore+1,"One completion sound after entire roller batch");game.Player.Teleport(game.Car.transform.position+Vector3.right*2);Check(game.Car.Enter(),"Enter for drivetrain checks");game.Car.Stop();float firstSpeed=game.Car.TickDrive(1,.2f);Check(firstSpeed>0&&firstSpeed<game.Progress.DriveSpeed,"Acceleration ramp");float coast=game.Car.TickDrive(0,.1f);Check(coast>=0&&coast<firstSpeed,"Release decelerates");for(int i=0;i<20;i++)game.Car.TickDrive(-1,.1f);Check(game.Car.CurrentSpeed<0&&game.Car.CurrentSpeed>=-game.Car.reverseSpeed,"S brakes then reverses with a capped reverse speed");game.Car.Stop();Check(game.Car.Exit(),"Exit after reverse test");}catch(Exception e){Fail(e);yield break;}
+            int pileBase=28000;while(!game.Population.IsAvailable(pileBase)||!game.Population.IsAvailable(pileBase+1))pileBase+=2;var crowdedPile=game.Park.Land(new Vector3(0,0,58));for(int n=0;n<2;n++){game.Population.Detach(pileBase+n,false);game.Population.Settle(pileBase+n,crowdedPile+Vector3.up*n,Quaternion.identity);}
+            int fillId=29000,fillIndex=0;while(game.Physics.ActiveCount<96&&fillId<35000){if(game.Population.IsAvailable(fillId)){var point=game.Park.Land(new Vector3(75+(fillIndex%12),0,210+fillIndex/12));if(game.Physics.Launch(fillId,point+Vector3.up*10,Vector3.zero))fillIndex++;}fillId++;}
+            try{Check(game.Physics.ActiveCount==96,"Saturate rigidbody pool");Check(game.CollectId(pileBase)&&game.Physics.FallingCount>0,"Pile starts collapsing with no free Rigidbody");}catch(Exception e){Fail(e);yield break;}
+            yield return new WaitForSeconds(.45f);
+            try{Check(game.Population.Position(pileBase+1).y<crowdedPile.y+.5f,"Instanced pile actually falls despite pool saturation");Check(game.feedbackComponent.rollerCollectionAudio!=null&&game.particles!=null,"Authored sound and particle hook components");}catch(Exception e){Fail(e);yield break;}
             game.SetMenu(true,true);
             try{Check(game.authoredHUD!=null&&game.HUD==game.authoredHUD&&game.HUD.HasAuthoredLayout,"Authored UI prefab is used");int level=game.Progress.Data.levels[0];foreach(var button in game.HUD.GetComponentsInChildren<UnityEngine.UI.Button>(true))if(button.name=="Pickup Amount buy button")button.onClick.Invoke();Check(game.Progress.Data.levels[0]==level+1,"Serialized prefab buy button is bound");foreach(var outline in game.HUD.GetComponentsInChildren<UnityEngine.UI.Outline>(true))Check(Vector4.Distance(outline.effectColor,(Color)new Color32(249,192,1,255))<.01f,"Yellow UI outlines");}
             catch(Exception e){Fail(e);yield break;}

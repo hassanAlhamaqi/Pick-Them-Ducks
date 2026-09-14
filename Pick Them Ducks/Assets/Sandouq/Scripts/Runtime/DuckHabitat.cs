@@ -11,6 +11,7 @@ namespace Sandouq.Ducks
         DuckGame game;readonly List<int> ducks=new List<int>();bool broken,shaking;float cooldown;
         public Transform[] spawnPoints=Array.Empty<Transform>();
         [Tooltip("Dedicated trigger for hover and LMB/E interaction. Edit its collider bounds independently of the visual mesh.")] public Collider interactionCollider;
+        public ParticleSystem breakParticles,shakeParticles;public Transform particleOrigin;
         public bool Hovered {get;set;}
         MeshFilter[] meshes;Material hoverMaterial;
         public string Key=>"habitat-"+index;
@@ -26,6 +27,7 @@ namespace Sandouq.Ducks
                 var p=SpawnPosition(i);if(bush)p.y=game.Park.Ground(p)+(broken?.15f:-6);
                 game.Population.Detach(id,false);game.Population.Settle(id,p,Quaternion.Euler(0,i*47,0));
             }
+            if(!bush)foreach(int id in ducks)if(game.Population.IsAvailable(id)&&game.Population.Position(id).y>game.Park.Ground(game.Population.Position(id))+.7f)game.Population.supportedDucks.Add(id);
             if(broken)Hide();
         }
         public Vector3 SpawnPosition(int i)
@@ -48,6 +50,8 @@ namespace Sandouq.Ducks
         public bool Interact()
         {
             if(game==null||broken||Time.time<cooldown)return false;cooldown=Time.time+1;
+            foreach(int id in ducks)game.Population.supportedDucks.Remove(id);
+            game.particles?.Play(bush?breakParticles:shakeParticles,particleOrigin!=null?particleOrigin.position:transform.position+Vector3.up);
             if(bush)
             {
                 broken=true;var keys=new List<string>(game.Progress.Data.brokenBushes??Array.Empty<string>());keys.Add(Key);game.Progress.Data.brokenBushes=keys.ToArray();

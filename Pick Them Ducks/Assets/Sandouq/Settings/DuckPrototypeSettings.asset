@@ -20,6 +20,8 @@ MonoBehaviour:
   spacing: 1.2
   cellWidth: 16
   moneyPerDuck: 1
+  defaultVariant: {fileID: 11400000, guid: 1f88e03419c30624896629edebe36b22, type: 2}
+  variantRanges: []
   tools:
   - name: Hands
     cost: 0
