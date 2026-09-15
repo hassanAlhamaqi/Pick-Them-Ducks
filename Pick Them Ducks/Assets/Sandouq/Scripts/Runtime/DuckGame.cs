@@ -40,7 +40,9 @@ namespace Sandouq.Ducks
         public bool Throwing => throwHeld>0;
         bool reverseInput,wasBagFull;
         public float DriveInput=>ToolActive?(reverseInput?-1:1):0;
+        public bool CanCorral=>CanDrive||(!MenuOpen&&!Placing&&!Deposits.Transferring&&ToolActive&&Progress.Tool==DuckTool.Sweeper);
         public bool CanDrive=>!Deposits.Transferring&&(RidingCar?(ToolActive||Car.IsMoving):ToolActive&&!Player.Braking&&Progress.Tool==DuckTool.Collector);
+        PrototypeSettings runtimeSettings;
         DuckFeedback feedback;
         DuckHabitat[] habitats;DuckHabitat hoveredHabitat;
         GameObject placementPreview;
@@ -52,19 +54,21 @@ namespace Sandouq.Ducks
         {
             previewColor=new MaterialPropertyBlock();
             if(Settings==null||Settings.duckPrefab==null){enabled=false;return;}
-            if(DuckBenchmark.Running){isolatedTest=true;Settings=Instantiate(Settings);Settings.totalDucks=DuckBenchmark.PopulationOverride;}
+            Settings=runtimeSettings=Instantiate(Settings);
+            var placements=DuckPlacement.InScene(gameObject.scene);Settings.SetPlacements(placements);
+            if(DuckBenchmark.Running){isolatedTest=true;Settings.totalDucks=DuckBenchmark.PopulationOverride;}
             if(DuckParkPlayChecks.Running)isolatedTest=true;
             var data=isolatedTest?new SaveData{total=Settings.totalDucks,seed=Settings.seed}:DuckSaveSystem.Load(Settings);
             Progress=new Progression(Settings,data);Player=authoredPlayer;Stage=authoredStage;
             if(Player==null||Stage==null||Park==null||Park.casketPrefab==null||populationComponent==null||physicsComponent==null||feedbackComponent==null||depositsComponent==null||(authoredHUD==null&&hudPrefab==null)){Debug.LogError("Open the updated authored DuckPrototype scene.");enabled=false;return;}
             Player.Initialize(this);
             if(data.hasPlayerPose){var restored=data.playerPosition;if(Park.WalkableWater(restored))restored.y=Park.WaterSupportHeight(restored)+.05f;else restored=Park.Land(restored)+Vector3.up*.05f;Player.Teleport(restored);Player.transform.rotation=Quaternion.Euler(0,data.playerYaw,0);}
-            Population=populationComponent;Population.Initialize(Settings,data,Player.View);
+            Population=populationComponent;Population.Initialize(Settings,data,Player.View,placements);
             Physics=physicsComponent;Physics.Initialize(this);
             feedback=feedbackComponent;feedback.Initialize(Population,Settings.animationPoolSize);
             if(Park.casket!=null)Park.casket.gameObject.SetActive(false);
             Deposits=depositsComponent;Deposits.Initialize(this);
-            habitats=Park.GetComponentsInChildren<DuckHabitat>();var moved=new System.Collections.Generic.HashSet<int>();if(data.poses!=null)foreach(var pose in data.poses)moved.Add(pose.id);foreach(var habitat in habitats)habitat.Initialize(this,moved);
+            habitats=Park.GetComponentsInChildren<DuckHabitat>();var moved=new System.Collections.Generic.HashSet<int>();if(data.poses!=null)foreach(var pose in data.poses)moved.Add(pose.id);foreach(var placement in placements)moved.Add(placement.duckId);foreach(var habitat in habitats)habitat.Initialize(this,moved);
             HUD=authoredHUD!=null?authoredHUD:Instantiate(hudPrefab,transform);HUD.Initialize(this);
             bool wasInCar=data.currentTool==4;EnsureCar();if(wasInCar){Progress.Equip(0);if(Car!=null)Player.Teleport(Park.Land(Car.transform.TransformPoint(Car.exitOffset))+Vector3.up*.05f);}
             RefreshTool();previousToolPosition=Player.transform.position;nextSave=Time.unscaledTime+Settings.autosaveSeconds;
@@ -134,9 +138,7 @@ namespace Sandouq.Ducks
             var box=new Bounds(new Vector3(-localMovement.x*.5f,.4f,reach-localMovement.z*.5f),new Vector3(Progress.WorkingWidth+Mathf.Abs(localMovement.x),1.5f,1+Mathf.Min(Mathf.Abs(localMovement.z),2)));
             if(tool==DuckTool.Sweeper)
             {
-                Vector3 velocity=movement.normalized*Mathf.Clamp(movement.magnitude/Time.fixedDeltaTime+1,2,14);
-                Physics.SweepActive(Player.transform,box,velocity);int pushed=0;
-                for(int i=0;i<24;i++){int id=Population.QueryBox(Player.transform,box,false);if(id<0||!Physics.Launch(id,Population.Position(id),velocity+Vector3.up*.15f))break;pushed++;}return pushed;
+                int before=Physics.PushedCount;Physics.PushRoller(box);return Physics.PushedCount-before;
             }
             var intake=new Bounds(new Vector3(-localMovement.x*.5f,.7f,(reach-.4f-localMovement.z)*.5f),new Vector3(Progress.WorkingWidth+.5f+Mathf.Abs(localMovement.x),3.2f,reach+1.4f+Mathf.Abs(localMovement.z)));
             int collected=Physics.CorralRoller(intake);if(Progress.FreeSpace==0)Physics.PushRoller(intake);return collected;
@@ -172,7 +174,7 @@ namespace Sandouq.Ducks
             Physics.Release(id);
             if(!Physics.Launch(id,camera.position+camera.forward*.7f,camera.forward*8+Vector3.up*2,true))return false;Progress.Thrown();particles?.Play(particles.duckThrow,camera.position+camera.forward*.7f);return true;
         }
-        public int Deposit(){Physics.FlushFront();ToolActive=false;bool stopping=Deposits.Transferring;int amount=Deposits.Begin();ShowNotice(stopping?"Stopping after ducks in flight land.":amount>0?"Depositing one duck at a time...":"Bring ducks to a deposit station.");return amount;}
+        public int Deposit(){Physics.FlushFront();ToolActive=false;bool stopping=Deposits.Transferring;int amount=Deposits.Begin();ShowNotice(stopping?"Stopping after ducks in flight land.":amount>0?"Depositing ducks...":"Bring ducks to a deposit station.");return amount;}
         public void DepositLanded(){feedback.DepositSound(1);if(Progress.Complete){Save();SetMenu(true);ShowNotice("EVERY DUCK DEPOSITED!",60);}}
         public DuckHabitat FocusedHabitat()
         {
@@ -253,6 +255,6 @@ namespace Sandouq.Ducks
         void OnApplicationFocus(bool focused){if(!focused&&!isolatedTest&&Deposits!=null)SetMenu(true);}
         void OnApplicationQuit()=>Save();
         void OnDisable()=>Save();
-        void OnDestroy(){if(!isolatedTest){Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}if(DuckBenchmark.Running&&Settings!=null)Destroy(Settings);}
+        void OnDestroy(){if(!isolatedTest){Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}if(runtimeSettings!=null)Destroy(runtimeSettings);}
     }
 }

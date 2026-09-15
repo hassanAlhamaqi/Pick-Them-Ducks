@@ -66,7 +66,7 @@ namespace Sandouq.Ducks
                 game.BuyTool(3);float width=game.Progress.WorkingWidth;game.BuyToolUpgrade();Check(game.Progress.WorkingWidth>width,"Sweeper grows");
                 game.Player.Teleport(game.Park.Land(new Vector3(30,0,10))+Vector3.up*.05f);game.Player.transform.rotation=Quaternion.identity;
                 game.Population.Detach(2000,false);game.Population.Settle(2000,game.Park.Land(game.Player.transform.position+Vector3.forward*1.5f),Quaternion.identity);
-                Check(game.SweepFloor(Vector3.forward*.15f)>0,"Floor sweeper pushes contacted ducks");
+                Use(game,true);Check(game.SweepFloor(Vector3.forward*.15f)>0&&game.Physics.PushedCount>0,"Sweeper holds contacted ducks in front corral");Check(game.Population.IsPhysical(2000),"Sweeper keeps pushed duck world-owned");Use(game,false);game.Physics.FlushFront();Check(game.Physics.PushedCount==0,"Sweeper releases front ducks when switched off");
                 game.BuyTool(1);float speed=game.Progress.DriveSpeed;game.BuyToolUpgrade();Check(game.Progress.DriveSpeed>speed,"Collector grows faster");
                 game.Population.Detach(3000,false);game.Population.Settle(3000,game.Park.Land(game.Player.transform.position+Vector3.forward*1.5f),Quaternion.identity);
                 Check(game.SweepFloor(Vector3.forward*.2f)>0,"Roller pushes floor contact");

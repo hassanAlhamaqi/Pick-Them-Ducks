@@ -46,7 +46,11 @@ namespace Sandouq.Ducks
         [Header("Duck values: stable ID ranges preserve identity through pickup and throwing")]
         public DuckVariant defaultVariant;
         public DuckVariantRange[] variantRanges=Array.Empty<DuckVariantRange>();
-        public DuckVariant VariantFor(int id){foreach(var range in variantRanges)if(id>=range.firstDuckId&&(long)id<((long)range.firstDuckId+range.count)&&range.variant!=null)return range.variant;return defaultVariant;}
+        readonly System.Collections.Generic.HashSet<int> placedIds=new System.Collections.Generic.HashSet<int>();
+        public bool HasPlacement(int id)=>placedIds.Contains(id);
+        readonly System.Collections.Generic.Dictionary<int,DuckVariant> placedVariants=new System.Collections.Generic.Dictionary<int,DuckVariant>();
+        public void SetPlacements(DuckPlacement[] placements){placedVariants.Clear();placedIds.Clear();foreach(var placement in placements)if(placement.duckId>=0&&placement.duckId<totalDucks&&placedIds.Add(placement.duckId)&&placement.variant!=null)placedVariants.Add(placement.duckId,placement.variant);}
+        public DuckVariant VariantFor(int id){if(placedVariants.TryGetValue(id,out var placed))return placed;foreach(var range in variantRanges)if(id>=range.firstDuckId&&(long)id<((long)range.firstDuckId+range.count)&&range.variant!=null)return range.variant;return defaultVariant;}
         public int ValueFor(int id){var variant=VariantFor(id);return Mathf.Max(1,variant!=null?variant.coinValue:moneyPerDuck);}
         [Header("Equipment â€” enum order: Hands, Collector, Vacuum, Sweeper, RollerCar")]
         public ToolDefinition[] tools = {

@@ -56,7 +56,7 @@ namespace Sandouq.Ducks
         public DuckPose[] Poses() => new List<DuckPose>(movedPoses.Values).ToArray();
         public int[] CollectedIds() => new List<int>(removed).ToArray();
 
-        public void Initialize(PrototypeSettings settings, SaveData data, Camera camera)
+        public void Initialize(PrototypeSettings settings, SaveData data, Camera camera, DuckPlacement[] placements=null)
         {
             view = camera; spacing = Mathf.Min(settings.spacing, 275f / Mathf.CeilToInt(Mathf.Sqrt(data.total))); cellWidth = Mathf.Clamp(settings.cellWidth, 2, 31);
             columns = Mathf.CeilToInt(Mathf.Sqrt(data.total)); rows = Mathf.CeilToInt((float)data.total / columns);
@@ -101,6 +101,7 @@ namespace Sandouq.Ducks
                 Insert(id,pos,rotations[id]);
             }
             Remaining = data.total;
+            if(placements!=null){var used=new HashSet<int>();foreach(var placement in placements){int id=placement.duckId;if(id<0||id>=Total||!used.Add(id)){Debug.LogError("Duck placement has an invalid or duplicate ID: "+id,placement);continue;}MoveInstance(id,placement.transform.position,placement.transform.rotation);movedPoses.Remove(id);}}
             foreach (int id in data.collected) Remove(id);
             if(data.poses != null) foreach(var pose in data.poses) if(IsAvailable(pose.id)) { Detach(pose.id,false); Settle(pose.id,pose.position,pose.rotation); }
         }

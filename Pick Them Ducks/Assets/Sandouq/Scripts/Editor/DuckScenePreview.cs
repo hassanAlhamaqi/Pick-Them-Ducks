@@ -66,7 +66,7 @@ namespace Sandouq.Ducks.Editor
             var root = new GameObject("Duck field editor preview") { hideFlags = HideFlags.HideAndDontSave };
             SceneManager.MoveGameObjectToScene(root, previewScene);
             preview = root.AddComponent<DuckPopulationManager>();
-            preview.Initialize(config, new SaveData { total = count, seed = seed }, null);
+            preview.Initialize(config, new SaveData { total = count, seed = seed }, null, DuckPlacement.InScene(game.gameObject.scene));
             SceneView.RepaintAll();
         }
 

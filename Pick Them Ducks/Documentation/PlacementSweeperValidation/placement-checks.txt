@@ -1,0 +1,1 @@
+PASS: prefab, explicit pose, variant value, finite population, saved move/depletion precedence, and override cleanup.

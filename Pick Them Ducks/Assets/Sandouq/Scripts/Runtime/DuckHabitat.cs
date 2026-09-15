@@ -22,7 +22,7 @@ namespace Sandouq.Ducks
             game=owner;meshes=GetComponentsInChildren<MeshFilter>();hoverMaterial=new Material(owner.Settings.outlineShader);hoverMaterial.SetFloat("_Width",.035f);broken=bush&&Array.IndexOf(game.Progress.Data.brokenBushes??Array.Empty<string>(),Key)>=0;
             for(int i=0;i<duckCount;i++)
             {
-                int id=game.Population.Total-501-index*10-i;if(id<0)continue;ducks.Add(id);
+                int id=game.Population.Total-501-index*10-i;if(id<0||game.Settings.HasPlacement(id))continue;ducks.Add(id);
                 if(!game.Population.IsAvailable(id)||moved.Contains(id))continue;
                 var p=SpawnPosition(i);if(bush)p.y=game.Park.Ground(p)+(broken?.15f:-6);
                 game.Population.Detach(id,false);game.Population.Settle(id,p,Quaternion.Euler(0,i*47,0));

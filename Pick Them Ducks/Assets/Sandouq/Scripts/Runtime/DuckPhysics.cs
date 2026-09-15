@@ -112,7 +112,7 @@ namespace Sandouq.Ducks
         }
         void MoveCorral(Body body)
         {
-            if(!game.CanDrive||game.Placing)
+            if(!game.CanCorral||game.Placing)
             {if(body.pushing)ReleasePush(body);else FlushFront();return;}
             float width=game.Progress.WorkingWidth;int columns=Mathf.Max(2,Mathf.FloorToInt(width/.4f));
             int row=(body.berth/columns)%3,layer=body.berth/(columns*3);
@@ -129,7 +129,7 @@ namespace Sandouq.Ducks
             if(game==null)return;
             if(!game.CanDrive&&pendingCollected>0)FlushFront();
             var player=game.Player.transform.position; var movement=player-previousPlayer; previousPlayer=player;
-            if(!game.MenuOpen && !game.CanDrive && movement.sqrMagnitude>.0001f) Push(player+Vector3.up*.2f,movement.normalized,1.25f,4,2.2f);
+            if(!game.MenuOpen && !game.CanCorral && movement.sqrMagnitude>.0001f) Push(player+Vector3.up*.2f,movement.normalized,1.25f,4,2.2f);
             foreach(var b in pool)
             {
                 if(b.id<0||b.flying)continue;
