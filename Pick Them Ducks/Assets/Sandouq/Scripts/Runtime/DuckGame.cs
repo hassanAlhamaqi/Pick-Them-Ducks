@@ -57,7 +57,7 @@ namespace Sandouq.Ducks
             Settings=runtimeSettings=Instantiate(Settings);
             var placements=DuckPlacement.InScene(gameObject.scene);Settings.SetPlacements(placements);
             if(DuckBenchmark.Running){isolatedTest=true;Settings.totalDucks=DuckBenchmark.PopulationOverride;}
-            if(DuckParkPlayChecks.Running)isolatedTest=true;
+            if(DuckParkPlayChecks.Running||DuckMountainPlayChecks.Running||DuckPilePlayChecks.Running)isolatedTest=true;
             var data=isolatedTest?new SaveData{total=Settings.totalDucks,seed=Settings.seed}:DuckSaveSystem.Load(Settings);
             Progress=new Progression(Settings,data);Player=authoredPlayer;Stage=authoredStage;
             if(Player==null||Stage==null||Park==null||Park.casketPrefab==null||populationComponent==null||physicsComponent==null||feedbackComponent==null||depositsComponent==null||(authoredHUD==null&&hudPrefab==null)){Debug.LogError("Open the updated authored DuckPrototype scene.");enabled=false;return;}
@@ -154,12 +154,12 @@ namespace Sandouq.Ducks
         public bool RecordRollerPickup(int id)
         {
             if((!Population.IsAvailable(id)&&!Population.IsPhysical(id))||!Progress.PickUp())return false;
-            Progress.RecordPickup(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id));Progress.Touch();return true;
+            Progress.RecordPickup(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id),id);Progress.Touch();return true;
         }
         public bool CollectId(int id)
         {
             if(Deposits.Transferring||Placing||(!Population.IsAvailable(id)&&!Population.IsPhysical(id))||!Progress.PickUp())return false;
-            particles?.Play(particles.pickup,Population.Position(id));Progress.RecordPickup(id);Physics.Release(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id));feedback.Fly(Population.Position(id),Population.Angle(id),Player.CarryTarget);feedback.PickupSound((float)Progress.Data.carried/Progress.Capacity);return true;
+            particles?.Play(particles.pickup,Population.Position(id));Progress.RecordPickup(id);Physics.Release(id);Population.Remove(id);Physics.CollapsePile(Population.Position(id),id);feedback.Fly(Population.Position(id),Population.Angle(id),Player.CarryTarget);feedback.PickupSound((float)Progress.Data.carried/Progress.Capacity);return true;
         }
         public void TickThrow(bool held,float deltaTime)
         {

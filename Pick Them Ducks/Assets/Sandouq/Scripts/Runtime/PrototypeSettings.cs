@@ -39,6 +39,8 @@ namespace Sandouq.Ducks
         [Header("One finite stage")]
         [Min(1)] public int totalDucks = 50000;
         public int seed = 1731;
+        [Header("Meadow piles: inclusive count range per pile")]
+        [Min(1)] public int meadowPileMinimum=120,meadowPileMaximum=240;
         [Range(.25f, 1f)] public float duckSize = .48f;
         [Min(.5f)] public float spacing = 1.2f;
         [Min(2)] public int cellWidth = 16;

@@ -56,9 +56,9 @@ Material:
     - _Overall_Alpha: 1
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _Size1: 0.2
+    - _Size1: 0.13
     - _Size2: 0.1
-    - _SolidAlpha: 0.6
+    - _SolidAlpha: 0.74
     - _SrcBlend: 5
     - _SrcBlendAlpha: 1
     - _Surface: 1
@@ -72,8 +72,8 @@ Material:
     - _Color2: {r: 0.97741824, g: 3.1878872, b: 2.9997623, a: 0.56078434}
     - _ColorHighlight: {r: 0, g: 0.34575447, b: 0.7490196, a: 1}
     - _NoisesOffset: {r: 0.5, g: 0.5, b: 0, a: 0}
-    - _Speed1: {r: 0.0033333334, g: 0.0033333334, b: 0, a: 0}
-    - _Speed2: {r: 0.020833336, g: 0.020833336, b: 0, a: 0}
+    - _Speed1: {r: 0.0016666665, g: 0.0016666665, b: 0, a: 0}
+    - _Speed2: {r: 0.01041667, g: 0.01041667, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &4671109819447767663

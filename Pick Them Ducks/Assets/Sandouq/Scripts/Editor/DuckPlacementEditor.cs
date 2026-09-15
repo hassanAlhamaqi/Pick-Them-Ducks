@@ -29,7 +29,7 @@ namespace Sandouq.Ducks.Editor
         internal static int FreeId(DuckGame game, DuckPlacement ignore = null)
         {
             var used = new HashSet<int>();
-            foreach (var p in DuckPlacement.InScene(game.gameObject.scene)) if (p != ignore) used.Add(p.duckId);
+            foreach (var p in DuckPlacement.InScene(game.gameObject.scene,true)) if (p != ignore) used.Add(p.duckId);
             if (game.Park != null) foreach (var habitat in game.Park.GetComponentsInChildren<DuckHabitat>())
                 for (int n = 0; n < habitat.duckCount; n++) used.Add(game.Settings.totalDucks - 501 - habitat.index * 10 - n);
             for (int id = 0; id < game.Settings.totalDucks - 500; id++) if (!used.Contains(id)) return id;
@@ -69,7 +69,7 @@ namespace Sandouq.Ducks.Editor
                 if (population == null) return;
                 int id = population.Query(ray.origin, ray.direction, 600, 0, .45f, false);
                 if (id < 0) return;
-                foreach (var p in DuckPlacement.InScene(game.gameObject.scene)) if (p.duckId == id) { Selection.activeGameObject = p.gameObject; e.Use(); return; }
+                foreach (var p in DuckPlacement.InScene(game.gameObject.scene,true)) if (p.duckId == id) { Selection.activeGameObject = p.gameObject; e.Use(); return; }
                 Create(game, id, population.Position(id), population.Rotation(id), variant != null ? variant : game.Settings.VariantFor(id));
             }
             else
@@ -94,7 +94,7 @@ namespace Sandouq.Ducks.Editor
             foreach (var item in targets)
             {
                 var p = (DuckPlacement)item; int duplicates = 0;
-                foreach (var other in DuckPlacement.InScene(p.gameObject.scene)) if (other.duckId == p.duckId) duplicates++;
+                foreach (var other in DuckPlacement.InScene(p.gameObject.scene,true)) if (other.duckId == p.duckId) duplicates++;
                 if (p.duckId < 0 || p.duckId >= game.Settings.totalDucks || duplicates > 1)
                     EditorGUILayout.HelpBox(p.name + ": invalid or duplicate ID. Assign a free ID below after duplicating a placement.", MessageType.Error);
             }
@@ -125,7 +125,7 @@ namespace Sandouq.Ducks.Editor
             next = EditorApplication.timeSinceStartup + .25;
             var game = DuckPlacementWindow.Game(); if (game == null) return;
             int hash = 17;
-            unchecked { foreach (var p in DuckPlacement.InScene(game.gameObject.scene)) { hash = hash * 31 + p.duckId; hash = hash * 31 + p.transform.position.GetHashCode(); hash = hash * 31 + p.transform.rotation.GetHashCode(); hash = hash * 31 + (p.variant != null ? p.variant.GetInstanceID() : 0); } }
+            unchecked { foreach (var p in DuckPlacement.InScene(game.gameObject.scene,true)) { var pile=p.GetComponentInParent<DuckPile>();if(pile!=null){hash=hash*31+pile.minimumDucks;hash=hash*31+pile.maximumDucks;hash=hash*31+pile.countSeed;}hash = hash * 31 + p.duckId; hash = hash * 31 + p.transform.position.GetHashCode(); hash = hash * 31 + p.transform.rotation.GetHashCode(); hash = hash * 31 + (p.variant != null ? p.variant.GetInstanceID() : 0); } }
             if (hash == previous) return; previous = hash;
             DuckScenePreview.DisposePreview(); DuckScenePreview.RefreshNow();
         }

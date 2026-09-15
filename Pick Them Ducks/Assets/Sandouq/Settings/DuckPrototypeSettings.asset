@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   duckPrefab: {fileID: 5829980650362595955, guid: 8b866b3f104b3d541a35ef1c068d3aad, type: 3}
   outlineShader: {fileID: 4800000, guid: b7973b2675a8bbc49945840b4513e496, type: 3}
-  totalDucks: 50000
-  seed: 1731
-  duckSize: 0.48
+  totalDucks: 100000
+  seed: 1900
+  meadowPileMinimum: 120
+  meadowPileMaximum: 10000
+  duckSize: 0.5
   spacing: 1.2
   cellWidth: 16
   moneyPerDuck: 1

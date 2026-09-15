@@ -35,6 +35,9 @@ namespace Sandouq.Ducks
         Camera view;
         int columns, rows, cellWidth;
         float spacing, minX;
+        readonly Dictionary<int,List<int>> pileMembers=new Dictionary<int,List<int>>();
+        int[] pileOf;
+        public void PileMembers(int id,List<int> result){result.Clear();if(id>=0&&id<Total&&pileMembers.TryGetValue(pileOf[id],out var members))foreach(int member in members)if(IsAvailable(member))result.Add(member);}
         public readonly HashSet<int> supportedDucks=new HashSet<int>();
         public void MoveInstance(int id,Vector3 p,Quaternion rotation){if(!IsAvailable(id))return;Detach(id,false);Settle(id,p,rotation);}
         public int HoverId { get; set; } = -1;
@@ -61,15 +64,22 @@ namespace Sandouq.Ducks
             view = camera; spacing = Mathf.Min(settings.spacing, 275f / Mathf.CeilToInt(Mathf.Sqrt(data.total))); cellWidth = Mathf.Clamp(settings.cellWidth, 2, 31);
             columns = Mathf.CeilToInt(Mathf.Sqrt(data.total)); rows = Mathf.CeilToInt((float)data.total / columns);
             minX = -columns * spacing * .5f;
-            rotations = new Quaternion[data.total];
+            rotations = new Quaternion[data.total];pileOf=new int[data.total];Array.Fill(pileOf,-1);
             var park = FindAnyObjectByType<DuckPark>();
             positions = new Vector3[data.total]; angles = new float[data.total]; tileOf = new int[data.total]; slotOf = new int[data.total];
             PrepareTemplate(settings);
             cellSize=spacing*cellWidth;
             var random = new System.Random(data.seed);
             var pileRandom=new System.Random(data.seed^73129);
-            var piles=new Vector3[90];
-            for(int i=0;i<piles.Length;i++){Vector3 center;do{center=new Vector3(-125+(float)pileRandom.NextDouble()*250,0,18+(float)pileRandom.NextDouble()*235);}while(Mathf.Abs(center.x)<10||(park!=null&&park.InLake(center)));piles[i]=center;}
+            var reservedSpawns=new HashSet<int>();if(placements!=null)foreach(var placement in placements)reservedSpawns.Add(placement.duckId);
+            if(park!=null)foreach(var habitat in park.GetComponentsInChildren<DuckHabitat>())for(int n=0;n<habitat.duckCount;n++)reservedSpawns.Add(data.total-501-habitat.index*10-n);
+            int budget=0;for(int id=0;id<data.total-500;id+=3)if(!reservedSpawns.Contains(id))budget++;
+            int minimum=Mathf.Min(Mathf.Max(1,settings.meadowPileMinimum),Mathf.Max(1,budget));
+            var piles=new Vector3[Mathf.Min(90,Mathf.Max(1,budget/minimum))];
+            for(int i=0;i<piles.Length;i++){Vector3 center;do{center=new Vector3(-125+(float)pileRandom.NextDouble()*250,0,18+(float)pileRandom.NextDouble()*235);}while(Mathf.Abs(center.x)<10||(park!=null&&(park.InLake(center)||park.InMountain(center))));piles[i]=center;}
+            var pileSlots=new List<Vector3>[piles.Length];
+            for(int n=0;n<piles.Length;n++){int max=Mathf.Max(minimum,Mathf.Min(settings.meadowPileMaximum,budget-(piles.Length-n-1)*minimum));int count=pileRandom.Next(minimum,max+1);budget-=count;pileSlots[n]=DuckPile.SolidOffsets(count);pileMembers[n]=new List<int>();}
+            int currentPile=0,currentSlot=0;
             for (int id = 0; id < data.total; id++)
             {
                 int x = id % columns, z = id / columns;
@@ -79,15 +89,14 @@ namespace Sandouq.Ducks
                     (z + .5f) * spacing + ((float)random.NextDouble() - .5f) * spacing * .72f);
                 if(park != null) {
                     // Redistribute lake cells across dry meadow instead of stacking ducks on the bank.
-                    while(park.InLake(pos))pos=new Vector3(12+(float)random.NextDouble()*117,0,8+(float)random.NextDouble()*255);
+                    while(park.InLake(pos)||park.InMountain(pos))pos=new Vector3(12+(float)random.NextDouble()*117,0,8+(float)random.NextDouble()*255);
                     pos = park.Land(pos);
                 }
-                if(park!=null && id%3==0)
+                if(park!=null&&id%3==0&&!reservedSpawns.Contains(id)&&currentPile<piles.Length&&id<data.total-500)
                 {
-                    var center=piles[(id/3)%piles.Length];float radius=Mathf.Sqrt((float)pileRandom.NextDouble())*1.75f;
-                    float angle=(float)pileRandom.NextDouble()*Mathf.PI*2;
-                    var candidate=center+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius);
-                    if(!park.InLake(candidate)){pos=park.Land(candidate);pos.y+=Mathf.Floor(Mathf.Max(0,1-radius/1.75f)*7)*.23f;}
+                    var offset=pileSlots[currentPile][currentSlot++];var candidate=piles[currentPile]+offset;candidate.y=park.Ground(new Vector3(candidate.x,0,candidate.z))+.03f+offset.y;
+                    pos=candidate;pileOf[id]=currentPile;pileMembers[currentPile].Add(id);
+                    if(currentSlot>=pileSlots[currentPile].Count){currentPile++;currentSlot=0;}
                 }
                 if(park!=null&&id>=data.total-500)
                 {
@@ -101,7 +110,8 @@ namespace Sandouq.Ducks
                 Insert(id,pos,rotations[id]);
             }
             Remaining = data.total;
-            if(placements!=null){var used=new HashSet<int>();foreach(var placement in placements){int id=placement.duckId;if(id<0||id>=Total||!used.Add(id)){Debug.LogError("Duck placement has an invalid or duplicate ID: "+id,placement);continue;}MoveInstance(id,placement.transform.position,placement.transform.rotation);movedPoses.Remove(id);}}
+            var authoredGroups=new Dictionary<DuckPile,int>();
+            if(placements!=null){var used=new HashSet<int>();foreach(var placement in placements){int id=placement.duckId;if(id<0||id>=Total||!used.Add(id)){Debug.LogError("Duck placement has an invalid or duplicate ID: "+id,placement);continue;}if(pileMembers.TryGetValue(pileOf[id],out var oldGroup))oldGroup.Remove(id);pileOf[id]=-1;var ownerPile=placement.GetComponentInParent<DuckPile>();if(ownerPile!=null){if(!authoredGroups.TryGetValue(ownerPile,out int group)){group=90+authoredGroups.Count;authoredGroups.Add(ownerPile,group);pileMembers[group]=new List<int>();}pileOf[id]=group;pileMembers[group].Add(id);}MoveInstance(id,placement.transform.position,placement.transform.rotation);movedPoses.Remove(id);}}
             foreach (int id in data.collected) Remove(id);
             if(data.poses != null) foreach(var pose in data.poses) if(IsAvailable(pose.id)) { Detach(pose.id,false); Settle(pose.id,pose.position,pose.rotation); }
         }

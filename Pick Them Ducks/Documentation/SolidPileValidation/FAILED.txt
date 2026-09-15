@@ -1,0 +1,2 @@
+System.Exception: Pile group finishes settling
+  at Sandouq.Ducks.DuckPilePlayChecks+<Start>d__4.MoveNext () [0x00974] in C:\Users\dingk\Documents\Work\Game Development\Sandouq\Projects\Pick-Them-Ducks\Pick Them Ducks\.utmp\ToolValidation\Assets\Sandouq\Scripts\Runtime\DuckPilePlayChecks.cs:68 

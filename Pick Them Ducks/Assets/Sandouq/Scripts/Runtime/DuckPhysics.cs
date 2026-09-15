@@ -7,58 +7,87 @@ namespace Sandouq.Ducks
     // Only this bounded pool participates in physics. Sleeping ducks return to GPU batches.
     public sealed class DuckPhysics : MonoBehaviour
     {
-        sealed class Body { public GameObject go; public Rigidbody rb; public int id=-1; public float still, age, groundLinearDamping, groundAngularDamping; public bool held, flying, pushing; public int berth,flightBatch; }
+        sealed class Body { public GameObject go; public Rigidbody rb; public int id=-1; public float still, age, groundLinearDamping, groundAngularDamping; public bool held, flying, pushing, pilePhysics, ready; public int berth,flightBatch; }
         public GameObject rollingDuckPrefab;
         [Min(.5f)] public float maximumGroundedRollTime=3f;
         [Min(0)] public float airborneLinearDamping=.1f,airborneAngularDamping=.3f;
-        readonly Body[] pool = new Body[96];
+        const int RegularSlots=96;
+        readonly Body[] pool = new Body[1120];
+        int poolCount;
+        [Header("Pooled pile collisions")]
+        [Range(32,1024)] public int maximumPileBodies=1024;
+        [Range(0,512)] public int prewarmPileBodies=256;
+        IEnumerable<Body> Bodies {get{for(int i=0;i<poolCount;i++)yield return pool[i];}}
+        public int RegularBodyCount {get{int count=0;for(int i=0;i<Mathf.Min(RegularSlots,poolCount);i++)if(pool[i].id>=0)count++;return count;}}
+        public int ActivePileBodies {get{int count=0;foreach(var b in Bodies)if(b.id>=0&&b.pilePhysics&&!b.held&&!b.flying&&!b.pushing)count++;return count;}}
         DuckGame game; Vector3 previousPlayer;
         public int ActiveCount { get; private set; }
         public void Initialize(DuckGame owner)
         {
             game=owner; previousPlayer=game.Player.transform.position;
-            for(int i=0;i<pool.Length;i++)
-            {
-                var root=Instantiate(rollingDuckPrefab,transform);
-                var rb=root.GetComponent<Rigidbody>();rb.isKinematic=true;
-                root.SetActive(false); pool[i]=new Body{go=root,rb=rb,groundLinearDamping=rb.linearDamping,groundAngularDamping=rb.angularDamping};
-            }
+            int warm=RegularSlots+Mathf.Min(prewarmPileBodies,maximumPileBodies);
+            for(int i=0;i<warm;i++)CreateBody();
         }
-        public bool Launch(int id, Vector3 position, Vector3 velocity, bool fromInventory=false)
+        Body CreateBody()
         {
-            Body free=null; foreach(var b in pool) if(b.id<0){free=b;break;}
+            var root=Instantiate(rollingDuckPrefab,transform);var rb=root.GetComponent<Rigidbody>();rb.isKinematic=true;
+            rb.solverIterations=8;rb.solverVelocityIterations=2;rb.maxDepenetrationVelocity=2;
+            root.SetActive(false);var body=new Body{go=root,rb=rb,groundLinearDamping=rb.linearDamping,groundAngularDamping=rb.angularDamping};pool[poolCount++]=body;return body;
+        }
+        public bool Launch(int id, Vector3 position, Vector3 velocity, bool fromInventory=false,bool pile=false)
+        {
+            Body free=null;int start=pile?RegularSlots:0,end=pile?poolCount:RegularSlots;
+            for(int i=start;i<end;i++)if(pool[i].id<0){free=pool[i];break;}
+            if(free==null&&pile&&poolCount<RegularSlots+Mathf.Clamp(maximumPileBodies,32,1024))free=CreateBody();
             if(free==null || (!fromInventory && !game.Population.IsAvailable(id)))return false;
             if(!game.Population.Detach(id,fromInventory))return false;
             game.Progress.Touch();
-            free.held=free.flying=free.pushing=false; free.id=id; free.age=free.still=0; free.go.transform.SetPositionAndRotation(position+Vector3.up*.23f,game.Population.Rotation(id));
+            free.held=free.flying=free.pushing=free.ready=false;free.pilePhysics=pile; free.id=id; free.age=free.still=0; free.go.transform.SetPositionAndRotation((pile?position+game.Population.Rotation(id)*Vector3.up*.19f:position+Vector3.up*.23f),game.Population.Rotation(id));
             free.rb.linearDamping=airborneLinearDamping;free.rb.angularDamping=airborneAngularDamping;free.rb.detectCollisions=true;free.go.transform.localScale=Vector3.one;free.go.SetActive(true); free.rb.isKinematic=false; free.rb.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
             game.Population.UpdatePose(id,position,free.go.transform.rotation);
-            free.rb.linearVelocity=velocity; free.rb.angularVelocity=new Vector3(velocity.z,1,-velocity.x)*3; ActiveCount++; return true;
+            free.rb.linearVelocity=velocity; free.rb.angularVelocity=pile?Vector3.zero:new Vector3(velocity.z,1,-velocity.x)*3; ActiveCount++; return true;
         }
-        [Header("Pile settling, independent of the Rigidbody pool")]
-        public float collapseRadius=4.2f,collapseGravity=22,collapseSpread=.65f;
-        struct Falling {public Vector3 velocity;public float spin;}
-        readonly Dictionary<int,Falling> falling=new Dictionary<int,Falling>();
-        readonly List<int> nearby=new List<int>(),fallingIds=new List<int>();
-        public int FallingCount=>falling.Count;
-        public void CollapsePile(Vector3 center)
+        [Header("Pile collapse")]
+        public float collapseRadius=4.2f,collapseSpread=.12f;
+        readonly Queue<int> pendingCollapse=new Queue<int>();
+        readonly HashSet<int> queuedCollapse=new HashSet<int>();
+        readonly List<int> nearby=new List<int>(),members=new List<int>();
+        public int FallingCount=>pendingCollapse.Count+ActivePileBodies;
+        public void CollapsePile(Vector3 center,int sourceId=-1)
         {
-            if(game.Park.InLake(center)||center.y-game.Park.Ground(center)>4.5f)return;
-            game.Population.Nearby(center,collapseRadius,nearby);int added=0;
-            foreach(int id in nearby){var p=game.Population.Position(id);float height=p.y-game.Park.Ground(p);if(height<=.06f||height>4.5f||falling.ContainsKey(id)||game.Population.supportedDucks.Contains(id))continue;falling[id]=new Falling{velocity=new Vector3(Mathf.Sin(id*2.4f)*collapseSpread,-.2f,Mathf.Cos(id*2.4f)*collapseSpread),spin=id%2==0?130:-130};added++;}
-            if(added>0)game.particles?.Play(game.particles.pileCollapse,center);
+            if(game.Park.InLake(center)||center.y-game.Park.Ground(center)>8)return;
+            game.Population.PileMembers(sourceId,members);game.Population.Nearby(center,collapseRadius,nearby);
+            var candidates=new HashSet<int>(nearby);
+            foreach(int id in members)if((game.Population.Position(id)-center).sqrMagnitude<144)candidates.Add(id);
+            bool elevated=false;foreach(int id in candidates)if(!game.Population.supportedDucks.Contains(id)&&game.Population.Position(id).y-game.Park.Ground(game.Population.Position(id))>.1f){elevated=true;break;}
+            if(!elevated)return;
+            int added=0;
+            foreach(int id in candidates){var p=game.Population.Position(id);if(!game.Population.IsAvailable(id)||game.Population.supportedDucks.Contains(id)||p.y-game.Park.Ground(p)>8||!queuedCollapse.Add(id))continue;pendingCollapse.Enqueue(id);added++;}
+            if(added>0){game.particles?.Play(game.particles.pileCollapse,center);TickCollapse();}
         }
         void TickCollapse()
         {
-            fallingIds.Clear();fallingIds.AddRange(falling.Keys);
-            foreach(int id in fallingIds){if(!game.Population.IsAvailable(id)){falling.Remove(id);continue;}var fall=falling[id];fall.velocity.y-=collapseGravity*Time.fixedDeltaTime;var p=game.Population.Position(id)+fall.velocity*Time.fixedDeltaTime;float ground=game.Park.InLake(p)?game.Park.WaterSupportHeight(p):game.Park.Ground(p);bool landed=p.y<=ground+.025f;if(landed)p.y=ground+.025f;var rotation=landed?Quaternion.Euler(0,game.Population.Angle(id),0):game.Population.Rotation(id)*Quaternion.Euler(fall.spin*Time.fixedDeltaTime,0,0);game.Population.MoveInstance(id,p,rotation);if(landed){falling.Remove(id);if(game.Park.InLake(p)&&!game.Park.WalkableWater(p))game.particles?.Play(game.particles.waterSplash,p);}else falling[id]=fall;}
+            while(pendingCollapse.Count>0)
+            {
+                int id=pendingCollapse.Peek();if(!game.Population.IsAvailable(id)){pendingCollapse.Dequeue();queuedCollapse.Remove(id);continue;}
+                var velocity=new Vector3(Mathf.Sin(id*2.4f),0,Mathf.Cos(id*2.4f))*collapseSpread;
+                if(!Launch(id,game.Population.Position(id),velocity,false,true))break;
+                pendingCollapse.Dequeue();queuedCollapse.Remove(id);
+            }
+        }
+        void SettlePileBatch()
+        {
+            int count=0;foreach(var b in Bodies)if(b.id>=0&&b.pilePhysics&&!b.held&&!b.flying&&!b.pushing){count++;if(!b.ready)return;}
+            if(count==0)return;
+            // Keep resting colliders until the whole active group is quiet; otherwise upper ducks lose their supports.
+            foreach(var b in Bodies)if(b.id>=0&&b.pilePhysics&&!b.held&&!b.flying&&!b.pushing){var p=b.go.transform.TransformPoint(new Vector3(0,-.19f,0));game.Population.Settle(b.id,p,b.go.transform.rotation);Disable(b);}
         }
         sealed class CollectionBatch {public int remaining,count;}
         readonly Dictionary<int,CollectionBatch> batches=new Dictionary<int,CollectionBatch>();
         int pendingCollected,nextBatch;bool shuttingDown;
         void CompleteFlight(int batchId){if(!batches.TryGetValue(batchId,out var batch))return;if(--batch.remaining>0)return;batches.Remove(batchId);if(!shuttingDown)game.RollerCollectionFinished(batch.count);}
         public void Release(int id)
-        { foreach(var b in pool)if(b.id==id){Disable(b);return;} }
+        { foreach(var b in Bodies)if(b.id==id){Disable(b);return;} }
         void Disable(Body b) { bool wasFlying=b.flying;int batch=b.flightBatch;b.flying=false;b.go.transform.DOKill(); if(!b.rb.isKinematic){b.rb.linearVelocity=Vector3.zero; b.rb.angularVelocity=Vector3.zero;} b.held=b.pushing=false; b.rb.collisionDetectionMode=CollisionDetectionMode.Discrete; b.rb.isKinematic=true; b.go.SetActive(false); b.id=-1; ActiveCount--;if(wasFlying)CompleteFlight(batch); }
         public int Push(Vector3 origin, Vector3 forward, float range, int count, float force)
         {
@@ -68,24 +97,24 @@ namespace Sandouq.Ducks
         }
         public void SweepActive(Transform frame,Bounds box,Vector3 velocity)
         {
-            foreach(var body in pool)if(body.id>=0 && !body.held && !body.flying && box.Contains(frame.InverseTransformPoint(body.go.transform.position)))
+            foreach(var body in Bodies)if(body.id>=0 && !body.held && !body.flying && box.Contains(frame.InverseTransformPoint(body.go.transform.position)))
             {body.rb.linearVelocity=new Vector3(velocity.x,body.rb.linearVelocity.y,velocity.z);body.rb.angularVelocity=new Vector3(velocity.z,0,-velocity.x)*3;}
         }
         public int CorralRoller(Bounds area)
         {
             int added=0;
             // Front slots can lie outside the intake. Reconsider every world-owned pushed duck first.
-            foreach(var body in pool)if(body.pushing&&game.Progress.FreeSpace>0&&CaptureRoller(body.id))added++;
+            foreach(var body in Bodies)if(body.pushing&&game.Progress.FreeSpace>0&&CaptureRoller(body.id))added++;
             for(int i=0;i<512&&game.Progress.FreeSpace>0;i++){int id=game.Population.QueryBox(game.Player.transform,area);if(id<0||!CaptureRoller(id))break;added++;}
             return added;
         }
         bool CaptureRoller(int id)
         {
-            bool showFront=FrontCount<48;Body body=null;foreach(var candidate in pool)if(candidate.id==id){body=candidate;break;}
-            if(showFront&&body==null&&Launch(id,game.Population.Position(id),Vector3.zero))foreach(var candidate in pool)if(candidate.id==id){body=candidate;break;}
+            bool showFront=FrontCount<48;Body body=null;foreach(var candidate in Bodies)if(candidate.id==id){body=candidate;break;}
+            if(showFront&&body==null&&Launch(id,game.Population.Position(id),Vector3.zero))foreach(var candidate in Bodies)if(candidate.id==id){body=candidate;break;}
             if(!game.RecordRollerPickup(id))return false;pendingCollected++;
             if(!showFront){if(body!=null)Disable(body);return true;}if(body==null)return true;
-            int berth=0;for(;berth<pool.Length;berth++){bool taken=false;foreach(var other in pool)if((other.held||other.pushing)&&other.berth==berth){taken=true;break;}if(!taken)break;}
+            int berth=0;for(;berth<pool.Length;berth++){bool taken=false;foreach(var other in Bodies)if((other.held||other.pushing)&&other.berth==berth){taken=true;break;}if(!taken)break;}
             // Bag-owned front and pull-in visuals must never displace the player controller.
             body.rb.detectCollisions=false;body.pushing=false;body.held=true;body.berth=berth;body.rb.linearVelocity=body.rb.angularVelocity=Vector3.zero;body.rb.collisionDetectionMode=CollisionDetectionMode.Discrete;body.rb.isKinematic=true;return true;
         }
@@ -94,17 +123,17 @@ namespace Sandouq.Ducks
             var frame=game.Player.transform;
             int budget=Mathf.Min(16,Mathf.Max(0,40-PushedCount));
             for(int i=0;i<budget;i++){int id=game.Population.QueryBox(frame,area,false);if(id<0||!Launch(id,game.Population.Position(id),Vector3.zero))break;}
-            foreach(var body in pool)if(body.id>=0&&!body.held&&!body.flying&&!body.pushing&&area.Contains(frame.InverseTransformPoint(body.go.transform.position))){int berth=0;for(;berth<pool.Length;berth++){bool taken=false;foreach(var other in pool)if((other.held||other.pushing)&&other.berth==berth){taken=true;break;}if(!taken)break;}body.pushing=true;body.berth=berth;body.rb.linearVelocity=body.rb.angularVelocity=Vector3.zero;body.rb.collisionDetectionMode=CollisionDetectionMode.Discrete;body.rb.isKinematic=true;}
+            foreach(var body in Bodies)if(body.id>=0&&!body.held&&!body.flying&&!body.pushing&&area.Contains(frame.InverseTransformPoint(body.go.transform.position))){int berth=0;for(;berth<pool.Length;berth++){bool taken=false;foreach(var other in Bodies)if((other.held||other.pushing)&&other.berth==berth){taken=true;break;}if(!taken)break;}body.pushing=true;body.berth=berth;body.rb.linearVelocity=body.rb.angularVelocity=Vector3.zero;body.rb.collisionDetectionMode=CollisionDetectionMode.Discrete;body.rb.isKinematic=true;}
         }
         void ReleasePush(Body body){body.pushing=false;body.rb.isKinematic=false;body.rb.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;body.rb.linearVelocity=Vector3.zero;body.still=0;}
-        public int PushedCount {get{int n=0;foreach(var body in pool)if(body.pushing)n++;return n;}}
-        public int FrontCount {get{int n=0;foreach(var b in pool)if(b.held)n++;return n;}}
+        public int PushedCount {get{int n=0;foreach(var body in Bodies)if(body.pushing)n++;return n;}}
+        public int FrontCount {get{int n=0;foreach(var b in Bodies)if(b.held)n++;return n;}}
         public void FlushFront()
         {
-            foreach(var body in pool)if(body.pushing)ReleasePush(body);
+            foreach(var body in Bodies)if(body.pushing)ReleasePush(body);
             int count=pendingCollected;pendingCollected=0;int batchId=++nextBatch;int visuals=FrontCount;
             if(visuals>0)batches[batchId]=new CollectionBatch{remaining=visuals,count=count};else if(count>0)game.RollerCollectionFinished(count);
-            int order=0;foreach(var b in pool)if(b.held)
+            int order=0;foreach(var b in Bodies)if(b.held)
             {
                 b.held=false;b.flying=true;b.flightBatch=batchId;var start=b.go.transform.position;float t=0;
                 DOTween.To(()=>t,v=>{t=v;b.go.transform.position=Vector3.Lerp(start,game.Player.CarryTarget.position,v)+Vector3.up*Mathf.Sin(v*Mathf.PI)*.5f;b.go.transform.localScale=Vector3.one*Mathf.Lerp(1,.1f,v);},1,.38f).SetDelay(order++*.012f).SetTarget(b.go.transform).OnComplete(()=>{Disable(b);b.go.transform.localScale=Vector3.one;});
@@ -130,7 +159,7 @@ namespace Sandouq.Ducks
             if(!game.CanDrive&&pendingCollected>0)FlushFront();
             var player=game.Player.transform.position; var movement=player-previousPlayer; previousPlayer=player;
             if(!game.MenuOpen && !game.CanCorral && movement.sqrMagnitude>.0001f) Push(player+Vector3.up*.2f,movement.normalized,1.25f,4,2.2f);
-            foreach(var b in pool)
+            foreach(var b in Bodies)
             {
                 if(b.id<0||b.flying)continue;
                 if(b.held||b.pushing){if(!game.MenuOpen)MoveCorral(b);}
@@ -146,13 +175,16 @@ namespace Sandouq.Ducks
                 if(b.held)continue;
                 if(game.Park.InLake(p)&&p.y<game.Park.waterHeight+.05f){p.y=game.Park.waterHeight;game.particles?.Play(game.particles.waterSplash,p);game.Population.Settle(b.id,p,Quaternion.Euler(0,b.go.transform.eulerAngles.y,0));Disable(b);continue;}
                 b.still=b.rb.linearVelocity.sqrMagnitude<.025f && b.rb.angularVelocity.sqrMagnitude<.08f ? b.still+Time.fixedDeltaTime : 0;
-                if(b.still>.65f || b.rb.IsSleeping() || (grounded&&b.age>=maximumGroundedRollTime) || p.y < -10)
+                b.ready=b.still>.65f || b.rb.IsSleeping() || (grounded&&b.age>=maximumGroundedRollTime) || p.y < -10;
+                if(b.pilePhysics)continue;
+                if(b.ready)
                 {
                     // Freeze the exact visible pose. Never lift, upright or relocate a settling duck.
                     game.particles?.Play(game.particles.duckSettle,p);game.Population.Settle(b.id,p,b.go.transform.rotation); Disable(b);
                 }
             }
+            SettlePileBatch();
         }
-        void OnDestroy(){shuttingDown=true;foreach(var body in pool)if(body!=null&&body.go!=null)body.go.transform.DOKill();}
+        void OnDestroy(){shuttingDown=true;foreach(var body in Bodies)if(body!=null&&body.go!=null)body.go.transform.DOKill();}
     }
 }

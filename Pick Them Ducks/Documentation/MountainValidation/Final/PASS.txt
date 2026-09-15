@@ -1,0 +1,1 @@
+PASS: winding route traversed uphill with the CharacterController (no jumps), cave entry/exit, elevated duck support, 600 summit/220 rare cave placements, and smaller lake bounds.
